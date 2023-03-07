@@ -1,0 +1,19 @@
+{
+  "name": "pseudowoodo",
+  "version": "0.0.1",
+  "description": "An interpreted language created with help from ChatGPT.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "ChatGPT",
+    "interpreter",
+    "language"
+  ],
+  "author": "EuphoricPengin/ChatGPT",
+  "license": "MIT",
+  "dependencies": {
+    "nearley": "^2.20.1"
+  }
+}
