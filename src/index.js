@@ -1,14 +1,11 @@
-const nearley = require('nearley');
-const grammar = require('./pseudowoodo.ne');
+const nearley = require("nearley");
+const grammar = require("./grammar.js");
 
-// Create a new parser object from our grammar.
+// Create a Parser object from our grammar.
 const parser = new nearley.Parser(nearley.Grammar.fromCompiled(grammar));
 
-// Parse some input code.
-const code = 'set x as 1 times 2';
-parser.feed(code);
+// Parse something!
+parser.feed("set this-is-a-thing as true");
 
-// Get the generated AST.
-const ast = parser.results[0];
-
-console.log(ast);
+// parser.results is an array of possible parsings.
+console.log(JSON.stringify(parser.results));
