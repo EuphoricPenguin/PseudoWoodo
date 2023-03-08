@@ -5,7 +5,7 @@ const grammar = require("./grammar.js");
 const parser = new nearley.Parser(nearley.Grammar.fromCompiled(grammar));
 
 // Parse something!
-parser.feed("set this-is-a-thing as true");
+parser.feed("this-is-a-thing as true");
 
 // parser.results is an array of possible parsings.
 console.log(JSON.stringify(parser.results));
