@@ -3,5 +3,5 @@ varName -> strValue
 string -> "'" strValue "'"
 other -> notStr
 strValue -> .:* {%([strValueArr]) => strValueArr.join("")%}
-#This POS is the current buggy mess.
+#This is the current buggy mess.
 notStr -> [(^')]
