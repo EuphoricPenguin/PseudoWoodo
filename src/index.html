@@ -28,18 +28,40 @@
 
 <body>
     <h1>PseudoWoodo 0.1</h1>
-    <textarea class="editor" id="code">set counter as 0
-call loop
-:loop
-timeout as 1
-call timeout
-console-log as 'Counter: ' plus counter
-call console-log
-counter as counter plus 1
-if counter is-less-than 5 call loop</textarea>
+    <textarea class="editor" id="code">console-log as 'Hello World' 
+call console-log</textarea>
     <br>
     <button onclick="runCode()">Run</button>
     <div class="output" id="output"></div>
+    <script>
+        let interpreter = null;
+
+        function runCode() {
+            const code = document.getElementById('code').value;
+            const output = document.getElementById('output');
+            output.innerHTML = '';
+
+            if (interpreter) {
+                interpreter.stop();
+            }
+
+            interpreter = new PseudoWoodoInterpreter((message) => {
+                if (message === null) {
+                    // Clear command received
+                    output.innerHTML = '';
+                } else {
+                    // Regular message
+                    const div = document.createElement('div');
+                    div.textContent = message;
+                    output.appendChild(div);
+                }
+            });
+
+            interpreter.execute(code).catch(e => {
+                output.innerHTML = `<div class="error">Error: ${e.message}</div>`;
+            });
+        }
+    </script>
     <script src="./script.js"></script>
 </body>
 

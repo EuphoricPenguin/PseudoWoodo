@@ -21,6 +21,43 @@
     <script>
         QUnit.start();
 
+        QUnit.module('Reserved Names', function () {
+            QUnit.test('Prevent set with reserved session variables', async function (assert) {
+                const interpreter = new PseudoWoodoInterpreter();
+
+                // Test invalid 'set' command
+                await interpreter.execute('set timeout as 5');
+                assert.ok(
+                    interpreter.output.some(msg => msg.includes('Cannot use \'set\' with session variable')),
+                    'Should block set with timeout'
+                );
+
+                // Test valid 'as' assignment
+                await interpreter.execute('timeout as 5');
+                assert.equal(interpreter.vars.timeout, 5, 'Should allow session var with as');
+                assert.notOk(
+                    interpreter.output.some(msg => msg.includes('Error')),
+                    'No errors for valid session var assignment'
+                );
+            });
+
+            QUnit.test('Prevent command keywords as variables', async function (assert) {
+                const interpreter = new PseudoWoodoInterpreter();
+
+                await interpreter.execute('set call as 42');
+                assert.ok(
+                    interpreter.output.some(msg => msg.includes('command keyword')),
+                    'Should block command keywords in set'
+                );
+
+                await interpreter.execute('if as 10');
+                assert.ok(
+                    interpreter.output.some(msg => msg.includes('command keyword')),
+                    'Should block command keywords in as'
+                );
+            });
+        });
+
         QUnit.module("Core Language Features");
 
         QUnit.test("Variable Declaration/Reassignment", async assert => {
