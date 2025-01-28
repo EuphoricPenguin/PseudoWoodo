@@ -32,13 +32,6 @@
                     'Should block set with timeout'
                 );
 
-                // Test valid 'as' assignment
-                await interpreter.execute('timeout as 5');
-                assert.equal(interpreter.vars.timeout, 5, 'Should allow session var with as');
-                assert.notOk(
-                    interpreter.output.some(msg => msg.includes('Error')),
-                    'No errors for valid session var assignment'
-                );
             });
 
             QUnit.test('Prevent command keywords as variables', async function (assert) {

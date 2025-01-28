@@ -20,6 +20,11 @@ PseudoWoodo is dynamically typed, as the inerpreter directly passes stored varia
 While it can technically store any value, strings must use single quotes (like this: `'string'`).
 There are no restrictions on number formatting, so long as it's a [valid](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Lexical_grammar#numeric_literals) number in JavaScript. Boolean values also follow [JavaScript convention.](https://developer.mozilla.org/en-US/docs/Glossary/Boolean)
 
+## Array Syntax
+
+TBA 
+
+
 ## Line Comments
 
 PseudoWoodo supports single-line comments for code documentation. It uses the `rem` keyword, which is short for "remove."

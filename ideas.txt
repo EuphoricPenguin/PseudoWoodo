@@ -1,0 +1,5 @@
+Add support for arrays
+Add proper error highlighting in the output with line numbers
+Add support for arrow key input, console prompts, basic sound output, and a canvas for raster graphics with a graphics library.
+Make sure the line-by-line printing in loops is still working
+
