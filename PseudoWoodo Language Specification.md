@@ -1,7 +1,7 @@
 # PseudoWoodo Language Specification
 ### Version 0.1
 
-*An inflexible, feature-poor, and proof-of-concept language with the end-goal being the creation of an entire programming language with the help of ChatGPT.*
+*An inflexible, feature-poor, and proof-of-concept language with the end-goal being the creation of an entire programming language with the help of a large language model.*
 
 *PseudoWoodo is an interpreted language written in JavaScript, and inherits its dynamic typing and browser compatability.*
 
@@ -167,10 +167,14 @@ if x is-less-than y call do-this else call do-this-instead
 :do-this
 console-log as x plus ' is definitely less than ' plus y plus '.'
 call console-log
+call end
 
 :do-this-instead
 console-log as 'For some reason, this came back as false.'
 call console-log
+call end
+
+:end
 ```
 
 The `if` and `else` operators only support call statements; you cannot use a single-line set operation with them.

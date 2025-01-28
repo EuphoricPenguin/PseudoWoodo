@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>PseudoWoodo Web Interpreter</title>
+    <style>
+        body {
+            font-family: monospace;
+            margin: 20px;
+        }
+
+        .editor {
+            width: 600px;
+            height: 400px;
+        }
+
+        .output {
+            border: 1px solid #ccc;
+            padding: 10px;
+            margin-top: 10px;
+        }
+
+        .error {
+            color: red;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>PseudoWoodo 0.1</h1>
+    <textarea class="editor" id="code">set counter as 0
+call loop
+:loop
+timeout as 1
+call timeout
+console-log as 'Counter: ' plus counter
+call console-log
+counter as counter plus 1
+if counter is-less-than 5 call loop</textarea>
+    <br>
+    <button onclick="runCode()">Run</button>
+    <div class="output" id="output"></div>
+    <script src="./script.js"></script>
+</body>
+
+</html>

@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <title>PseudoWoodo Tests</title>
+    <link rel="stylesheet" href="https://code.jquery.com/qunit/qunit-2.19.1.css">
+</head>
+
+<body>
+    <div id="qunit"></div>
+    <div id="qunit-fixture"></div>
+
+    <!-- Include the interpreter code -->
+    <script src="./script.js"></script>
+
+    <!-- QUnit framework -->
+    <script src="https://code.jquery.com/qunit/qunit-2.19.1.js"></script>
+
+    <!-- Test suite -->
+    <script>
+        QUnit.start();
+
+        QUnit.module("Core Language Features");
+
+        QUnit.test("Variable Declaration/Reassignment", async assert => {
+            const code = `
+                set test-var as 5
+                test-var as 10
+                rem This should be ignored
+                set another-var as 'success'`;
+
+            const output = [];
+            const interpreter = new PseudoWoodoInterpreter(msg => output.push(msg));
+            await interpreter.execute(code);
+
+            assert.equal(interpreter.vars['test-var'], 10, "Variable reassignment");
+            assert.equal(interpreter.vars['another-var'], 'success', "Initial declaration");
+        });
+
+        QUnit.test("Arithmetic Operations", async assert => {
+            const code = `
+                set add-test as 10 plus 5
+                set sub-test as 20 minus 8
+                set mul-test as 3 times 4
+                set div-test as 20 over 2`;
+
+            const interpreter = new PseudoWoodoInterpreter(() => { });
+            await interpreter.execute(code);
+
+            assert.equal(interpreter.vars['add-test'], 15);
+            assert.equal(interpreter.vars['sub-test'], 12);
+            assert.equal(interpreter.vars['mul-test'], 12);
+            assert.equal(interpreter.vars['div-test'], 10);
+        });
+
+        QUnit.test("String Operations", async assert => {
+            const code = `
+                set str1 as 'Hello'
+                set str2 as 'World'
+                set combined as str1 plus ' ' plus str2`;
+
+            const interpreter = new PseudoWoodoInterpreter(() => { });
+            await interpreter.execute(code);
+
+            assert.equal(interpreter.vars.combined, 'Hello World');
+        });
+
+        QUnit.test("Control Flow", async assert => {
+            const code = `
+                call test-label
+                :test-label
+                set control-test as 'success'`;
+
+            const interpreter = new PseudoWoodoInterpreter(() => { });
+            await interpreter.execute(code);
+
+            assert.equal(interpreter.vars['control-test'], 'success');
+        });
+
+        QUnit.test("Conditional Logic", async assert => {
+            const code = `
+                set a as 5
+                set b as 10
+                if a is-less-than b call true-branch else call false-branch
+                
+                :true-branch
+                set result as 'pass'
+                call exit
+                
+                :false-branch
+                set result as 'fail'
+                
+                :exit`;
+
+            const interpreter = new PseudoWoodoInterpreter(() => { });
+            await interpreter.execute(code);
+
+            assert.equal(interpreter.vars.result, 'pass');
+        });
+
+        QUnit.test("Direct comparison in console-log", async assert => {
+            const code = `
+        rem the expected output is false
+        console-log as 1 is-greater-than 2
+        call console-log
+    `;
+
+            const output = [];
+            const interpreter = new PseudoWoodoInterpreter(msg => {
+                if (msg !== null) output.push(msg);
+            });
+
+            await interpreter.execute(code);
+
+            assert.equal(output.length, 1, "Should have one output message");
+            assert.equal(output[0], "false", "Should output 'false' for 1 > 2 comparison");
+        });
+
+        QUnit.test("Looping", async assert => {
+            const code = `
+                set counter as 0
+                call loop
+                
+                :loop
+                counter as counter plus 1
+                if counter is-less-than 5 call loop`;
+
+            const interpreter = new PseudoWoodoInterpreter(() => { });
+            await interpreter.execute(code);
+
+            assert.equal(interpreter.vars.counter, 5);
+        });
+
+        QUnit.module("Session Calls");
+
+        QUnit.test("console-log and timeout", async assert => {
+            const done = assert.async();
+            const code = `
+        console-log as 'First message'
+        call console-log
+        timeout as 0.01
+        call timeout
+        console-log as 'Second message'
+        call console-log
+    `;
+
+            const output = [];
+            const interpreter = new PseudoWoodoInterpreter(msg => {
+                output.push(msg);
+                assert.step(msg);
+            });
+
+            await interpreter.execute(code);
+
+            assert.verifySteps(
+                ['First message', 'Second message'],
+                "Should log messages in order after timeout"
+            );
+            done();
+        });
+
+        QUnit.test("console-clear", async assert => {
+            const code = `
+        console-log as 'Should be cleared'
+        call console-log
+        call console-clear
+    `;
+
+            let cleared = false;
+            const output = [];
+            const interpreter = new PseudoWoodoInterpreter(msg => {
+                if (msg === null) {
+                    output.length = 0; // Simulate DOM clearance
+                    cleared = true;
+                } else {
+                    output.push(msg);
+                }
+            });
+
+            await interpreter.execute(code);
+
+            assert.true(cleared, "Clear signal should be sent");
+            assert.equal(output.length, 0, "DOM output should be cleared");
+            assert.ok(interpreter.output.length === 0, "Internal output should be cleared");
+        });
+
+        QUnit.test("Logical Operators", async assert => {
+            const code = `
+                set x as true
+                set y as false
+                if x and not y call success
+                
+                :success
+                set result as 'pass'`;
+
+            const interpreter = new PseudoWoodoInterpreter(() => { });
+            await interpreter.execute(code);
+
+            assert.equal(interpreter.vars.result, 'pass');
+        });
+
+        QUnit.test("Comparison Operators", async assert => {
+            const code = `
+                if 5 is-less-than-or-equal-to 5 call equal
+                :equal
+                set result as 'pass'`;
+
+            const interpreter = new PseudoWoodoInterpreter(() => { });
+            await interpreter.execute(code);
+
+            assert.equal(interpreter.vars.result, 'pass');
+        });
+
+        QUnit.test("Comment Handling", async assert => {
+            const code = `
+                rem This entire block should be ignored
+                rem set test as 'fail'
+                rem Another comment`;
+
+            const interpreter = new PseudoWoodoInterpreter(() => { });
+            await interpreter.execute(code);
+
+            assert.notOk('test' in interpreter.vars, "No variables should be set");
+        });
+    </script>
+</body>
+
+</html>
