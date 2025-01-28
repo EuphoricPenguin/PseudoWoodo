@@ -1,40 +1,139 @@
 <!DOCTYPE html>
 <html>
-
 <head>
     <title>PseudoWoodo Web Interpreter</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
     <style>
-        body {
-            font-family: monospace;
-            margin: 20px;
+        :root {
+            --bg: #1a1a1a;
+            --fg: #e0e0e0;
+            --accent: #4CAF50;
+            --code-bg: #2d2d2d;
         }
 
-        .editor {
-            width: 600px;
+        body {
+            font-family: 'Fira Code', monospace;
+            margin: 20px;
+            background: var(--bg);
+            color: var(--fg);
+        }
+
+        .editor-container {
+            width: 100%;
+            max-width: 800px;
+            position: relative;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        #code {
+            width: 100%;
             height: 400px;
+            padding: 15px;
+            background: var(--code-bg);
+            color: var(--fg);
+            border: 2px solid #3a3a3a;
+            border-radius: 8px;
+            resize: none;
+            tab-size: 4;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        button {
+            background: var(--accent);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-top: 10px;
+            transition: opacity 0.2s;
+        }
+
+        button:hover {
+            opacity: 0.9;
         }
 
         .output {
-            border: 1px solid #ccc;
-            padding: 10px;
-            margin-top: 10px;
+            background: var(--code-bg);
+            padding: 15px;
+            margin-top: 15px;
+            border-radius: 8px;
+            white-space: pre-wrap;
+            min-height: 100px;
+            border: 2px solid #3a3a3a;
         }
 
         .error {
-            color: red;
+            color: #ff5555;
+        }
+
+        /* Syntax Highlighting */
+        .keyword { color: #c678dd; }
+        .string { color: #98c379; }
+        .comment { color: #5c6370; }
+        .label { color: #e5c07b; }
+        .function { color: #61afef; }
+
+        /* Mobile Styles */
+        @media (max-width: 600px) {
+            body {
+                margin: 10px;
+            }
+            
+            #code {
+                height: 300px;
+                font-size: 16px;
+            }
+            
+            button {
+                width: 100%;
+                padding: 15px;
+            }
         }
     </style>
 </head>
-
 <body>
     <h1>PseudoWoodo 0.1</h1>
-    <textarea class="editor" id="code">console-log as 'Hello World' 
+    <div class="editor-container">
+        <textarea class="editor" id="code">console-log as 'Hello World' 
 call console-log</textarea>
+    </div>
     <br>
-    <button onclick="runCode()">Run</button>
+    <button onclick="runCode()">Run ▶</button>
     <div class="output" id="output"></div>
+
     <script>
         let interpreter = null;
+
+        // Basic Syntax Highlighting
+        function applyHighlighting() {
+            const code = document.getElementById('code');
+            const text = code.value;
+            const highlighted = text
+                .replace(/(set|call|if|rem|as|else)\b/g, '<span class="keyword">$1</span>')
+                .replace(/'([^']*)'/g, '<span class="string">\'$1\'</span>')
+                .replace(/(^| )rem .*/gm, '<span class="comment">$&</span>')
+                .replace(/:(\w+)/g, '<span class="label">:$1</span>')
+                .replace(/(console-log|console-clear|timeout)\b/g, '<span class="function">$1</span>');
+            
+            code.nextElementSibling.innerHTML = highlighted;
+        }
+
+        // Initialize editor
+        function initEditor() {
+            const container = document.querySelector('.editor-container');
+            const pre = document.createElement('pre');
+            pre.className = 'editor-highlight';
+            container.appendChild(pre);
+            
+            document.getElementById('code').addEventListener('input', applyHighlighting);
+            applyHighlighting();
+        }
 
         function runCode() {
             const code = document.getElementById('code').value;
@@ -47,10 +146,8 @@ call console-log</textarea>
 
             interpreter = new PseudoWoodoInterpreter((message) => {
                 if (message === null) {
-                    // Clear command received
                     output.innerHTML = '';
                 } else {
-                    // Regular message
                     const div = document.createElement('div');
                     div.textContent = message;
                     output.appendChild(div);
@@ -58,11 +155,16 @@ call console-log</textarea>
             });
 
             interpreter.execute(code).catch(e => {
-                output.innerHTML = `<div class="error">Error: ${e.message}</div>`;
+                const errorDiv = document.createElement('div');
+                errorDiv.className = 'error';
+                errorDiv.textContent = `Error: ${e.message}`;
+                output.appendChild(errorDiv);
             });
         }
+
+        // Initialize on load
+        window.addEventListener('load', initEditor);
     </script>
     <script src="./script.js"></script>
 </body>
-
 </html>
