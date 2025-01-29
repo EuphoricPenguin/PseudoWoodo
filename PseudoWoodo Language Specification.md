@@ -1,5 +1,5 @@
 # PseudoWoodo Language Specification
-### Version 0.1
+### Version 0.2
 
 *An inflexible, feature-poor, and proof-of-concept language with the end-goal being the creation of an entire programming language with the help of a large language model.*
 
@@ -12,18 +12,13 @@
 
 ## Reserved Names
 
-PseudoWoodo uses several reserved names/keywords that are outlined in the following specification. As a convention, reserved names should be written in lowercase. Reserved names aren't technically case-sensitive, however. Reserved names can not be used as variable names (aside from reserved variables), and will result in an error.
+PseudoWoodo uses several reserved names/keywords that are outlined in the following specification. Reserved names and session calls should be written in lowercase. Reserved names can not be used as variable names (aside from reserved variables), and will result in an error.
 
 ## Primitive Data Types
 
 PseudoWoodo is dynamically typed, as the inerpreter directly passes stored variables to an object in JavaScript.
 While it can technically store any value, strings must use single quotes (like this: `'string'`).
 There are no restrictions on number formatting, so long as it's a [valid](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Lexical_grammar#numeric_literals) number in JavaScript. Boolean values also follow [JavaScript convention.](https://developer.mozilla.org/en-US/docs/Glossary/Boolean)
-
-## Array Syntax
-
-TBA 
-
 
 ## Line Comments
 
@@ -197,3 +192,60 @@ call loop
 x as x plus 1
 if x is-less-than-or-equal-to 4 call loop
 ```
+
+## Arrays
+
+PseudoWoodo supports native JavaScript syntax for arrays, as it passes them directly as arrays to the variable object. Arrays can be single-dimensional or multi-dimensional (e.g., 2D arrays).
+
+Arrays are declared using the `set` and `as` keywords, with values enclosed in square brackets.
+
+```
+set my-array as [1, 2, 3, 4]  
+set 2d-array as [[1, 2], [3, 4]]  
+```
+
+To get the length of an array, use the `length` and `of` keywords followed by the array name.
+
+```
+set my-array as [10, 20, 30, 40]  
+length of my-array  
+``` 
+
+To access an element at a specific index, use the `at-index` and `of` keywords.
+
+```
+set my-array as [10, 20, 30, 40]  
+at-index 2 of my-array
+```  
+
+This will resulut in a value of 30, as PseudoWoodo uses zero-based indexing.
+
+To modify an element at a specific index, use the `set-index` and `of` keywords with the `as` keyword to specify the new value.
+
+```
+set my-array as [10, 20, 30, 40]  
+set-index 2 of my-array as 99
+```  
+
+For 2D arrays, use the `at-index keyword` with stacked `of` keywords to access elements.
+
+```
+set 2d-array as [[1, 2], [3, 4]]  
+at-index 0 of 1 of 2d-array
+```  
+
+Since PseudoWoodo doesn’t have explicit loops, you can use the existing if and call system to iterate over arrays.
+
+```
+set my-array as [10, 20, 30, 40]  
+set i as 0  
+call loop  
+
+:loop  
+console-log as at-index i of my-array
+call console-log
+i as i plus 1  
+if i is-less-than length of my-array call loop 
+``` 
+
+This will output each element of the array to the console.
