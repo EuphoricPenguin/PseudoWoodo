@@ -296,3 +296,5 @@ class PseudoWoodoInterpreter {
         currentArray[lastIdx] = value;
     }
 }
+
+module.exports = PseudoWoodoInterpreter;

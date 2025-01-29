@@ -1,0 +1,9 @@
+set i as 0
+:loop
+timeout as 0.01
+call timeout
+console-log as 'hello world'
+call console-log
+if i is-less-than 50 call loop else call end
+
+:end
