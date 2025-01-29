@@ -127,6 +127,25 @@
             background: #FF8C00; /* Darker orange */
         }
 
+        /* Documentation Button Styles */
+        .doc-button {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: #61afef; /* Blue color */
+            color: white;
+            border: none;
+            font-size: 18px;
+            cursor: pointer;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+            transition: background 0.3s ease;
+            position: relative;
+        }
+
+        .doc-button:hover {
+            background: #4fa1e0; /* Darker blue */
+        }
+
         /* Wii-style Spin Animation */
         @keyframes wii-spin {
             0% {
@@ -192,12 +211,17 @@
     <div class="button-container">
         <button class="run-button" onclick="runCode()">▶</button>
         <button class="test-button" onclick="window.location.href='./test.html'">T</button>
+        <button class="doc-button" onclick="window.location.href='https://github.com/EuphoricPenguin/PseudoWoodo/blob/main/PseudoWoodo%20Language%20Specification.md'">D</button>
     </div>
 
     <div class="main-container">
         <div class="editor-container">
             <pre class="editor-highlight" id="highlight"></pre>
-            <textarea class="editor" id="code" spellcheck="false">console-log as 'Hello World' 
+            <textarea class="editor" id="code" spellcheck="false">rem Please be advised that not all language features are bug-free.
+rem Got bugs? https://github.com/EuphoricPenguin/PseudoWoodo/issues
+rem I'm aware of at least three or so active issues, and there are probably more.
+rem The unit tests are also not perfect, but they do show a few of the problems.
+console-log as 'Hello World' 
 call console-log</textarea>
         </div>
         <div class="output" id="output"></div>
