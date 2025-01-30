@@ -15,14 +15,13 @@ class PseudoWoodoInterpreter {
         this.running = true;
         this.code = code.split('\n')
             .map(line => {
-                // Remove inline comments before processing
                 const remIndex = line.toLowerCase().indexOf('rem');
                 return remIndex > -1 ? line.slice(0, remIndex) : line;
             })
             .filter(l => l.trim());
         this.currentLine = 0;
 
-        // First pass to find labels
+        // First pass to collect labels
         while (this.currentLine < this.code.length) {
             const line = this.code[this.currentLine].trim();
             if (line.startsWith(':')) {
@@ -45,8 +44,6 @@ class PseudoWoodoInterpreter {
 
     async processLine(rawLine) {
         let line = rawLine.trim();
-
-        // Remove any remaining inline comments (case-insensitive)
         const remIndex = line.toLowerCase().indexOf('rem');
         if (remIndex > -1) {
             line = line.slice(0, remIndex).trim();
@@ -161,31 +158,34 @@ class PseudoWoodoInterpreter {
     jumpToLabel(label) {
         const targetLine = this.labels[label];
         if (targetLine !== undefined) {
-            this.currentLine = targetLine; // Corrected to directly set the target line
+            this.currentLine = targetLine;
         }
     }
 
     evaluateExpression(expr) {
-        expr = this.normalizeExpression(expr)
-            .replace(/([a-z0-9-]+)/gi, match => {
-                if (this.vars.hasOwnProperty(match)) {
-                    const value = this.vars[match];
+        // Normalize the expression first
+        expr = this.normalizeExpression(expr);
 
-                    // Handle arrays first
-                    if (Array.isArray(value)) {
-                        return JSON.stringify(value);
-                    }
+        // Replace variable names with their values
+        expr = expr.replace(/([a-z0-9-]+)/gi, match => {
+            if (this.vars.hasOwnProperty(match)) {
+                const value = this.vars[match];
 
-                    // Handle boolean values by returning literal strings
-                    if (typeof value === 'boolean') {
-                        return value.toString();
-                    }
-
-                    // Handle strings with proper quoting
-                    return typeof value === 'string' ? `"${value.replace(/"/g, '\\"')}"` : value;
+                // Handle arrays by returning their JSON representation
+                if (Array.isArray(value)) {
+                    return JSON.stringify(value);
                 }
-                return match;
-            });
+
+                // Handle booleans by returning their string representation
+                if (typeof value === 'boolean') {
+                    return value.toString();
+                }
+
+                // Handle strings by wrapping them in quotes
+                return typeof value === 'string' ? `"${value.replace(/"/g, '\\"')}"` : value;
+            }
+            return match;
+        });
 
         try {
             // Use JSON.parse to handle boolean/number/string conversion
@@ -197,6 +197,7 @@ class PseudoWoodoInterpreter {
             return parsedExpr;
         } catch {
             try {
+                // Evaluate the expression as a JavaScript expression
                 return Function(`"use strict"; return (${expr})`)();
             } catch (e) {
                 this.output.push(`Expression error: ${e.message}`);
@@ -232,19 +233,23 @@ class PseudoWoodoInterpreter {
             .replace(/is-greater-than-or-equal-to/gi, '>=')
             .replace(/is-less-than/gi, '<')
             .replace(/is-greater-than/gi, '>')
-            .replace(/is-equal-to/gi, '==')
+            .replace(/is-equal-to/gi, '===')
             .replace(/plus/gi, '+')
             .replace(/minus/gi, '-')
             .replace(/times/gi, '*')
             .replace(/over/gi, '/')
             .replace(/'([^']*)'/g, '"$1"')
             .replace(/\b0+(\d+)\b/g, '$1')
-            .replace(/\blength\s+of\s+([a-zA-Z0-9-]+)/g, '$1.length');
+            .replace(/\blength\s+of\s+([a-zA-Z0-9-]+)/g, '$1.length')
+            .replace(/\band\b/gi, '&&')
+            .replace(/\bnot\b/gi, '!');
 
+        // Handle nested array access (e.g., "at-index 0 of 1 of 2d-array")
         let previous;
         do {
             previous = expr;
-            expr = expr.replace(/at-index\s+(.+?)\s+of\s+(?!of)(.+)/g, '($2)[$1]');
+            expr = expr.replace(/at-index\s+(\d+)\s+of\s+(\d+)\s+of\s+([a-zA-Z0-9-]+)/g, '$3[$2][$1]')
+                      .replace(/at-index\s+(\d+)\s+of\s+([a-zA-Z0-9-]+)/g, '$2[$1]');
         } while (expr !== previous);
 
         return expr;
@@ -277,7 +282,7 @@ class PseudoWoodoInterpreter {
         }
 
         if (!arrayName) throw new Error("Array name not found");
-        indices.reverse(); // Reverse to access from outermost to innermost
+        indices.reverse();
 
         if (!this.vars[arrayName] || !Array.isArray(this.vars[arrayName])) {
             throw new Error(`'${arrayName}' is not an array`);
