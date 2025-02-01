@@ -68,6 +68,57 @@
             assert.equal(interpreter.vars['another-var'], 'success', "Initial declaration");
         });
 
+        QUnit.test("String variable reassignment", async assert => {
+            const code = `
+        rem string variable resetting
+        set foo as 'bar'
+        foo as 'foo'
+        console-log as foo
+        call console-log
+    `;
+
+            const logs = [];
+            const interpreter = new PseudoWoodoInterpreter(msg => {
+                if (msg !== null) logs.push(msg);
+            });
+            await interpreter.execute(code);
+            assert.equal(logs[0], 'foo', "Should log 'foo' after reassignment");
+        });
+
+        QUnit.test("Conditional variable reassignment", async assert => {
+            const code = `
+        rem test conditional variable setting
+        set a as 2
+        if a is-less-than 5 a as 20
+        console-log as a
+        call console-log
+    `;
+
+            const logs = [];
+            const interpreter = new PseudoWoodoInterpreter(msg => {
+                if (msg !== null) logs.push(msg);
+            });
+            await interpreter.execute(code);
+            assert.equal(logs[0], 20, "Should log 20 after conditional reassignment");
+        });
+
+        QUnit.test("Conditional session call", async assert => {
+            const code = `
+        rem conditional session call
+        console-log as 'hello'
+        if 1 is-less-than 3 call console-log else call end
+
+        :end
+    `;
+
+            const logs = [];
+            const interpreter = new PseudoWoodoInterpreter(msg => {
+                if (msg !== null) logs.push(msg);
+            });
+            await interpreter.execute(code);
+            assert.equal(logs[0], 'hello', "Should log 'hello'");
+        });
+
         QUnit.test("Arithmetic Operations", async assert => {
             const code = `
                 set add-test as 10 plus 5
@@ -167,6 +218,33 @@
             await interpreter.execute(code);
 
             assert.equal(interpreter.vars.result, 'pass');
+        });
+
+        QUnit.test("Mixed string comparison in conditional with string literal", async assert => {
+            const code = `
+        set foo as 'bar'
+
+        if foo is-equal-to 'bar' call yes else call no
+
+        :yes
+        set console-log as 'The variable foo is set to bar'
+        call console-log
+        call end
+
+        :no
+        set console-log as 'The variable foo is NOT set to bar'
+        call console-log
+        call end
+
+        :end
+    `;
+
+            const logs = [];
+            const interpreter = new PseudoWoodoInterpreter(msg => {
+                if (msg !== null) logs.push(msg);
+            });
+            await interpreter.execute(code);
+            assert.equal(logs[0], 'The variable foo is set to bar', "Should log the correct message");
         });
 
         QUnit.test("Condition correctly evaluates string variables", async (assert) => {

@@ -45,21 +45,21 @@ class PseudoWoodoInterpreter {
 
     async processLine(rawLine) {
         let line = rawLine.trim();
-
+    
         // Remove any remaining inline comments (case-insensitive)
         const remIndex = line.toLowerCase().indexOf('rem');
         if (remIndex > -1) {
             line = line.slice(0, remIndex).trim();
         }
-
+    
         if (!line || line.startsWith(':')) return;
-
+    
         const parts = line.split(/\s+/);
         if (parts.length === 0) return;
-
+    
         try {
             const firstToken = parts[0].toLowerCase();
-
+    
             if (firstToken === 'set') {
                 if (parts.length < 4 || parts[2].toLowerCase() !== 'as') {
                     throw new Error("Invalid 'set' syntax: set <var> as <value>");
@@ -70,38 +70,34 @@ class PseudoWoodoInterpreter {
                 this.vars[varName] = this.evaluateExpression(value);
                 return;
             }
-
+    
             if (firstToken === 'set-index') {
                 this.handleSetIndexCommand(parts);
                 return;
             }
-
+    
             const asIndex = parts.findIndex(p => p.toLowerCase() === 'as');
             if (asIndex !== -1) {
                 const varName = parts.slice(0, asIndex).join(' ');
                 const value = parts.slice(asIndex + 1).join(' ');
                 this.validateVariableName(varName, false);
-
-                // Handle arithmetic operations (e.g., "i as i plus 1")
-                if (value.includes('plus') || value.includes('minus') || value.includes('times') || value.includes('over')) {
-                    this.vars[varName] = this.evaluateExpression(value);
-                } else {
-                    this.vars[varName] = this.evaluateExpression(value);
-                }
+    
+                // Handle variable reassignment (e.g., "foo as 'foo'")
+                this.vars[varName] = this.evaluateExpression(value);
                 return;
             }
-
+    
             if (firstToken === 'call') {
                 const target = parts[1];
                 await this.handleCall(target);
                 return;
             }
-
+    
             if (firstToken === 'if') {
                 this.handleConditional(line);
                 return;
             }
-
+    
         } catch (e) {
             this.output.push(`Error: ${e.message}`);
             this.running = false;
