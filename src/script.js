@@ -15,13 +15,14 @@ class PseudoWoodoInterpreter {
         this.running = true;
         this.code = code.split('\n')
             .map(line => {
+                // Remove inline comments before processing
                 const remIndex = line.toLowerCase().indexOf('rem');
                 return remIndex > -1 ? line.slice(0, remIndex) : line;
             })
             .filter(l => l.trim());
         this.currentLine = 0;
 
-        // First pass to collect labels
+        // First pass to find labels
         while (this.currentLine < this.code.length) {
             const line = this.code[this.currentLine].trim();
             if (line.startsWith(':')) {
@@ -44,6 +45,8 @@ class PseudoWoodoInterpreter {
 
     async processLine(rawLine) {
         let line = rawLine.trim();
+
+        // Remove any remaining inline comments (case-insensitive)
         const remIndex = line.toLowerCase().indexOf('rem');
         if (remIndex > -1) {
             line = line.slice(0, remIndex).trim();
@@ -78,7 +81,13 @@ class PseudoWoodoInterpreter {
                 const varName = parts.slice(0, asIndex).join(' ');
                 const value = parts.slice(asIndex + 1).join(' ');
                 this.validateVariableName(varName, false);
-                this.vars[varName] = this.evaluateExpression(value);
+
+                // Handle arithmetic operations (e.g., "i as i plus 1")
+                if (value.includes('plus') || value.includes('minus') || value.includes('times') || value.includes('over')) {
+                    this.vars[varName] = this.evaluateExpression(value);
+                } else {
+                    this.vars[varName] = this.evaluateExpression(value);
+                }
                 return;
             }
 
@@ -136,16 +145,16 @@ class PseudoWoodoInterpreter {
 
     handleConditional(line) {
         const conditionEnd = line.toLowerCase().indexOf(' call ');
-        const condition = line.slice(3, conditionEnd);
-        const trueTarget = line.slice(conditionEnd + 6);
+        const condition = line.slice(3, conditionEnd).trim();
+        const trueTarget = line.slice(conditionEnd + 6).trim();
 
         const elseIndex = trueTarget.toLowerCase().indexOf(' else call ');
         let falseTarget = null;
         let finalTarget = trueTarget;
 
         if (elseIndex !== -1) {
-            finalTarget = trueTarget.slice(0, elseIndex);
-            falseTarget = trueTarget.slice(elseIndex + 11);
+            finalTarget = trueTarget.slice(0, elseIndex).trim();
+            falseTarget = trueTarget.slice(elseIndex + 11).trim();
         }
 
         if (this.evaluateCondition(condition)) {
@@ -158,51 +167,34 @@ class PseudoWoodoInterpreter {
     jumpToLabel(label) {
         const targetLine = this.labels[label];
         if (targetLine !== undefined) {
-            this.currentLine = targetLine;
+            this.currentLine = targetLine; // Corrected to directly set the target line
         }
     }
 
     evaluateExpression(expr) {
-        // Normalize the expression first
         expr = this.normalizeExpression(expr);
 
-        // Replace variable names with their values
-        expr = expr.replace(/([a-z0-9-]+)/gi, match => {
+        // Replace variables with their values
+        expr = expr.replace(/([a-zA-Z0-9-]+)/g, match => {
             if (this.vars.hasOwnProperty(match)) {
                 const value = this.vars[match];
-
-                // Handle arrays by returning their JSON representation
+                if (typeof value === 'string') {
+                    return `"${value}"`; // Wrap strings in quotes
+                }
                 if (Array.isArray(value)) {
-                    return JSON.stringify(value);
+                    return JSON.stringify(value); // Convert arrays to JSON strings
                 }
-
-                // Handle booleans by returning their string representation
-                if (typeof value === 'boolean') {
-                    return value.toString();
-                }
-
-                // Handle strings by wrapping them in quotes
-                return typeof value === 'string' ? `"${value.replace(/"/g, '\\"')}"` : value;
+                return value; // Use numbers or booleans directly
             }
-            return match;
+            return match; // Leave other tokens unchanged
         });
 
         try {
-            // Use JSON.parse to handle boolean/number/string conversion
-            const parsedExpr = JSON.parse(
-                expr
-                    .replace(/(true|false)/g, match => match === 'true' ? 'true' : 'false')
-                    .replace(/(\bNaN\b)/g, 'null')
-            );
-            return parsedExpr;
-        } catch {
-            try {
-                // Evaluate the expression as a JavaScript expression
-                return Function(`"use strict"; return (${expr})`)();
-            } catch (e) {
-                this.output.push(`Expression error: ${e.message}`);
-                return NaN;
-            }
+            // Evaluate the expression
+            return Function(`"use strict"; return (${expr})`)();
+        } catch (e) {
+            this.output.push(`Expression error: ${e.message}`);
+            return NaN;
         }
     }
 
@@ -233,7 +225,7 @@ class PseudoWoodoInterpreter {
             .replace(/is-greater-than-or-equal-to/gi, '>=')
             .replace(/is-less-than/gi, '<')
             .replace(/is-greater-than/gi, '>')
-            .replace(/is-equal-to/gi, '===')
+            .replace(/is-equal-to/gi, '==')
             .replace(/plus/gi, '+')
             .replace(/minus/gi, '-')
             .replace(/times/gi, '*')
@@ -248,9 +240,11 @@ class PseudoWoodoInterpreter {
         let previous;
         do {
             previous = expr;
-            expr = expr.replace(/at-index\s+(\d+)\s+of\s+(\d+)\s+of\s+([a-zA-Z0-9-]+)/g, '$3[$2][$1]')
-                      .replace(/at-index\s+(\d+)\s+of\s+([a-zA-Z0-9-]+)/g, '$2[$1]');
+            expr = expr.replace(/at-index\s+(\d+)\s+of\s+(\d+)\s+of\s+([a-zA-Z0-9-]+)/g, '($3)[$2][$1]');
         } while (expr !== previous);
+
+        // Handle single-level array access (e.g., "at-index i of my-array")
+        expr = expr.replace(/at-index\s+([a-zA-Z0-9-]+)\s+of\s+([a-zA-Z0-9-]+)/g, '($2)[$1]');
 
         return expr;
     }
@@ -282,7 +276,7 @@ class PseudoWoodoInterpreter {
         }
 
         if (!arrayName) throw new Error("Array name not found");
-        indices.reverse();
+        indices.reverse(); // Reverse to access from outermost to innermost
 
         if (!this.vars[arrayName] || !Array.isArray(this.vars[arrayName])) {
             throw new Error(`'${arrayName}' is not an array`);
