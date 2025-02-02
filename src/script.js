@@ -45,21 +45,21 @@ class PseudoWoodoInterpreter {
 
     async processLine(rawLine) {
         let line = rawLine.trim();
-    
+
         // Remove any remaining inline comments (case-insensitive)
         const remIndex = line.toLowerCase().indexOf('rem');
         if (remIndex > -1) {
             line = line.slice(0, remIndex).trim();
         }
-    
+
         if (!line || line.startsWith(':')) return;
-    
+
         const parts = line.split(/\s+/);
         if (parts.length === 0) return;
-    
+
         try {
             const firstToken = parts[0].toLowerCase();
-    
+
             if (firstToken === 'set') {
                 if (parts.length < 4 || parts[2].toLowerCase() !== 'as') {
                     throw new Error("Invalid 'set' syntax: set <var> as <value>");
@@ -70,34 +70,33 @@ class PseudoWoodoInterpreter {
                 this.vars[varName] = this.evaluateExpression(value);
                 return;
             }
-    
+
             if (firstToken === 'set-index') {
                 this.handleSetIndexCommand(parts);
                 return;
             }
-    
+
+            // Handle variable reassignment (e.g., "foo as 'foo'")
             const asIndex = parts.findIndex(p => p.toLowerCase() === 'as');
             if (asIndex !== -1) {
                 const varName = parts.slice(0, asIndex).join(' ');
                 const value = parts.slice(asIndex + 1).join(' ');
                 this.validateVariableName(varName, false);
-    
-                // Handle variable reassignment (e.g., "foo as 'foo'")
                 this.vars[varName] = this.evaluateExpression(value);
                 return;
             }
-    
+
             if (firstToken === 'call') {
                 const target = parts[1];
                 await this.handleCall(target);
                 return;
             }
-    
+
             if (firstToken === 'if') {
-                this.handleConditional(line);
+                await this.handleConditional(line);
                 return;
             }
-    
+
         } catch (e) {
             this.output.push(`Error: ${e.message}`);
             this.running = false;
@@ -134,59 +133,92 @@ class PseudoWoodoInterpreter {
             default:
                 const targetLine = this.labels[target];
                 if (targetLine !== undefined) {
-                    this.currentLine = targetLine - 1;
+                    this.currentLine = targetLine; // Corrected to directly set the target line
                 }
         }
     }
 
-    handleConditional(line) {
+    async handleConditional(line) {
+        // Extract the condition and the action
         const conditionEnd = line.toLowerCase().indexOf(' call ');
-        const condition = line.slice(3, conditionEnd).trim();
-        const trueTarget = line.slice(conditionEnd + 6).trim();
-
-        const elseIndex = trueTarget.toLowerCase().indexOf(' else call ');
-        let falseTarget = null;
-        let finalTarget = trueTarget;
-
-        if (elseIndex !== -1) {
-            finalTarget = trueTarget.slice(0, elseIndex).trim();
-            falseTarget = trueTarget.slice(elseIndex + 11).trim();
-        }
-
-        if (this.evaluateCondition(condition)) {
-            this.jumpToLabel(finalTarget);
-        } else if (falseTarget) {
-            this.jumpToLabel(falseTarget);
+        if (conditionEnd === -1) {
+            // Handle variable reassignment directly in the if statement
+            const tokens = line.slice(3).trim().split(/\s+/);
+            let asIndex = -1;
+    
+            // Find the last occurrence of 'as' to separate condition from assignment
+            for (let i = tokens.length - 1; i >= 0; i--) {
+                if (tokens[i].toLowerCase() === 'as') {
+                    asIndex = i;
+                    break;
+                }
+            }
+    
+            if (asIndex === -1 || asIndex < 1 || asIndex === tokens.length - 1) {
+                throw new Error("Invalid 'if' syntax: expected 'as' for variable reassignment");
+            }
+    
+            const varName = tokens[asIndex - 1];
+            const value = tokens.slice(asIndex + 1).join(' ');
+            const condition = tokens.slice(0, asIndex - 1).join(' ');
+    
+            if (this.evaluateCondition(condition)) {
+                // Perform variable reassignment
+                this.validateVariableName(varName, false);
+                this.vars[varName] = this.evaluateExpression(value);
+            }
+        } else {
+            // Handle label jumps (original behavior)
+            const condition = line.slice(3, conditionEnd).trim();
+            const trueTarget = line.slice(conditionEnd + 6).trim();
+    
+            const elseIndex = trueTarget.toLowerCase().indexOf(' else call ');
+            let falseTarget = null;
+            let finalTarget = trueTarget;
+    
+            if (elseIndex !== -1) {
+                finalTarget = trueTarget.slice(0, elseIndex).trim();
+                falseTarget = trueTarget.slice(elseIndex + 11).trim();
+            }
+    
+            if (this.evaluateCondition(condition)) {
+                await this.handleCall(finalTarget);
+            } else if (falseTarget) {
+                await this.handleCall(falseTarget);
+            }
         }
     }
 
     jumpToLabel(label) {
         const targetLine = this.labels[label];
         if (targetLine !== undefined) {
-            this.currentLine = targetLine; // Corrected to directly set the target line
+            this.currentLine = targetLine;
         }
     }
 
     evaluateExpression(expr) {
         expr = this.normalizeExpression(expr);
 
-        // Replace variables with their values
-        expr = expr.replace(/([a-zA-Z0-9-]+)/g, match => {
-            if (this.vars.hasOwnProperty(match)) {
-                const value = this.vars[match];
-                if (typeof value === 'string') {
-                    return `"${value}"`; // Wrap strings in quotes
+        // Replace variables with their values, skipping those inside quotes
+        expr = expr.replace(/(?:'[^']*'|"[^"]*"|(\b[a-zA-Z0-9-]+\b))/g, (match, g1) => {
+            if (g1) { // Variable name outside quotes
+                if (this.vars.hasOwnProperty(g1)) {
+                    const value = this.vars[g1];
+                    if (typeof value === 'string') {
+                        return JSON.stringify(value); // Properly escape quotes
+                    }
+                    if (Array.isArray(value)) {
+                        return JSON.stringify(value);
+                    }
+                    return value;
                 }
-                if (Array.isArray(value)) {
-                    return JSON.stringify(value); // Convert arrays to JSON strings
-                }
-                return value; // Use numbers or booleans directly
+                return g1;
+            } else { // Preserve quoted strings
+                return match;
             }
-            return match; // Leave other tokens unchanged
         });
 
         try {
-            // Evaluate the expression
             return Function(`"use strict"; return (${expr})`)();
         } catch (e) {
             this.output.push(`Expression error: ${e.message}`);
@@ -196,15 +228,18 @@ class PseudoWoodoInterpreter {
 
     evaluateCondition(condition) {
         condition = this.normalizeExpression(condition)
-            .replace(/([a-z0-9-]+)/gi, match => {
-                if (this.vars.hasOwnProperty(match)) {
-                    const value = this.vars[match];
-                    // Return actual boolean literals for boolean values
-                    if (typeof value === 'boolean') return value.toString();
-                    if (Array.isArray(value)) return JSON.stringify(value);
-                    return typeof value === 'string' ? `"${value}"` : value;
+            .replace(/(?:'[^']*'|"[^"]*"|(\b[a-zA-Z0-9-]+\b))/g, (match, g1) => {
+                if (g1) { // Variable name outside quotes
+                    if (this.vars.hasOwnProperty(g1)) {
+                        const value = this.vars[g1];
+                        if (typeof value === 'boolean') return value.toString();
+                        if (Array.isArray(value)) return JSON.stringify(value);
+                        return typeof value === 'string' ? `"${value}"` : value;
+                    }
+                    return g1;
+                } else { // Preserve quoted strings
+                    return match;
                 }
-                return match;
             });
 
         try {
