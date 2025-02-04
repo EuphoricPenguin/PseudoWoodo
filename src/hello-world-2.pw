@@ -1,8 +1,16 @@
+rem This is currently not working because console-clear is broken.
 set i as 0
 :loop
-timeout as 0.2
+timeout as 0.1
 call timeout
 i as i plus 1
 console-log as 'hello world #' plus i
 call console-log
-if i is-less-than 10 call loop
+if i is-less-than 10 call loop else call reset
+
+:reset
+call console-clear
+timeout as 2
+call timeout
+i as 0
+call loop
