@@ -1,0 +1,8 @@
+set i as 0
+:loop
+timeout as 0.2
+call timeout
+i as i plus 1
+console-log as 'hello world #' plus i
+call console-log
+if i is-less-than 10 call loop
