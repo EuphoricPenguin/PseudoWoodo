@@ -1,5 +1,5 @@
 # PseudoWoodo
-An experimental interpreted language implemented in JavsScript primarily by DeepSeek, with syntax and UX design by EuphoricPenguin.
+An experimental interpreted language implemented in JavaScript primarily by DeepSeek, with syntax and UX design by EuphoricPenguin. Mistral Small 3 has also recently joined the team to help with front-end development.
 
 [Try out the Web Interpreter](https://euphoricpenguin.github.io/PseudoWoodo/)
 
