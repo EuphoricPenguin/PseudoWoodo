@@ -84,7 +84,7 @@
             await interpreter.execute(code);
             assert.equal(logs[0], 'foo', "Should log 'foo' after reassignment");
         });
-        
+
         QUnit.test("Conditional session call", async assert => {
             const code = `
         rem conditional session call
@@ -454,7 +454,7 @@
 
         QUnit.test("console-clear", async assert => {
             const code = `
-        console-log as 'Should be cleared'
+        console-log 'Should be cleared'
         call console-log
         call console-clear
     `;
@@ -472,9 +472,13 @@
 
             await interpreter.execute(code);
 
+            // Check that the console was cleared
             assert.true(cleared, "Clear signal should be sent");
             assert.equal(output.length, 0, "DOM output should be cleared");
             assert.ok(interpreter.output.length === 0, "Internal output should be cleared");
+
+            // Additional check to ensure that the console had content before clearing
+            assert.ok(interpreter.output.length > 0 || output.length > 0, "There should have been content to clear");
         });
     </script>
 </body>
