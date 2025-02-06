@@ -244,8 +244,6 @@
             /* Decreased size */
             height: 80px;
             /* Decreased size */
-            filter: invert(100%);
-            transform: rotate(45deg);
             position: relative;
         }
 
@@ -303,10 +301,7 @@
 
 <body>
     <div class="logo-container">
-        <img src="Logo.png" alt="PseudoWoodo Logo 1" id="logo1" class="logo">
-        <img src="Logo.png" alt="PseudoWoodo Logo 2" id="logo2" class="logo">
-        <img src="Logo.png" alt="PseudoWoodo Logo 3" id="logo3" class="logo">
-        <img src="Logo.png" alt="PseudoWoodo Logo 4" id="logo4" class="logo">
+        <img src="Logo-tree.png" alt="PseudoWoodo Logo" id="logo1" class="logo" onclick="window.location.href='https://github.com/EuphoricPenguin/PseudoWoodo/'">
         <span class="logo-version">0.2a</span>
     </div>
 
@@ -385,12 +380,6 @@ call console-log</textarea>
                         div.textContent = message;
                         output.appendChild(div);
                     }
-                },
-                async () => {
-                    // Handle user input
-                    const input = document.getElementById('user-input').value;
-                    document.getElementById('user-input').value = ''; // Clear input field
-                    return input;
                 }
             );
 
@@ -402,14 +391,22 @@ call console-log</textarea>
             });
         }
 
-        function sendInput() {
-            // Trigger the interpreter to continue execution after receiving input
-            runCode();
-        }
+        // Add this to handle input when pressing Enter key
+        document.getElementById('user-input').addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') {
+                sendInput();
+            }
+        });
 
         function sendInput() {
-            // Placeholder function for the send button
-            // The actual input functionality will be added later
+            const inputField = document.getElementById('user-input');
+            const inputValue = inputField.value.trim();
+
+            if (interpreter && inputValue) {
+                // Provide the input to the interpreter
+                interpreter.provideInput(inputValue);
+                inputField.value = ''; // Clear the input field
+            }
         }
 
         window.addEventListener('load', initEditor);

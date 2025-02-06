@@ -1,5 +1,5 @@
 class PseudoWoodoInterpreter {
-    constructor(onLog, onInput) {
+    constructor(onLog) {
         this.COMMAND_KEYWORDS = new Set(['set', 'call', 'if', 'rem', 'as', 'else']);
         this.SESSION_VARS = new Set(['timeout', 'console-log', 'console-clear']);
         this.vars = {};
@@ -9,7 +9,10 @@ class PseudoWoodoInterpreter {
         this.code = [];
         this.running = false;
         this.onLog = onLog;
-        this.onInput = onInput; // Callback to handle user input
+
+        // Input handling
+        this.inputPromise = null;
+        this.inputResolver = null;
     }
 
     async execute(code) {
@@ -42,6 +45,11 @@ class PseudoWoodoInterpreter {
 
     stop() {
         this.running = false;
+        if (this.inputResolver) {
+            this.inputResolver(""); // Resolve with empty string if stopped
+            this.inputPromise = null;
+            this.inputResolver = null;
+        }
     }
 
     async processLine(rawLine) {
@@ -193,12 +201,12 @@ class PseudoWoodoInterpreter {
     async evaluateExpression(expr) {
         expr = this.normalizeExpression(expr);
 
-        // Handle the 'input' keyword
+        // Handle input keyword
         if (expr.trim().toLowerCase() === 'input') {
-            if (!this.onInput) {
-                throw new Error("Input functionality is not available.");
-            }
-            return await this.onInput();
+            this.inputPromise = new Promise(resolve => {
+                this.inputResolver = resolve;
+            });
+            return await this.inputPromise;
         }
 
         // Replace variables with their values, skipping those inside quotes
@@ -326,6 +334,14 @@ class PseudoWoodoInterpreter {
         const lastIdx = indices[indices.length - 1];
         if (lastIdx < 0 || lastIdx >= currentArray.length) throw new Error(`Index ${lastIdx} out of bounds`);
         currentArray[lastIdx] = value;
+    }
+
+    provideInput(value) {
+        if (this.inputResolver) {
+            this.inputResolver(value);
+            this.inputPromise = null;
+            this.inputResolver = null;
+        }
     }
 }
 
