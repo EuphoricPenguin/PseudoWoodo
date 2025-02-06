@@ -454,7 +454,7 @@
 
         QUnit.test("console-clear", async assert => {
             const code = `
-        console-log 'Should be cleared'
+        console-log as 'Should be cleared'
         call console-log
         call console-clear
     `;
@@ -476,9 +476,6 @@
             assert.true(cleared, "Clear signal should be sent");
             assert.equal(output.length, 0, "DOM output should be cleared");
             assert.ok(interpreter.output.length === 0, "Internal output should be cleared");
-
-            // Additional check to ensure that the console had content before clearing
-            assert.ok(interpreter.output.length > 0 || output.length > 0, "There should have been content to clear");
         });
     </script>
 </body>

@@ -320,10 +320,8 @@
     <div class="main-container">
         <div class="editor-container">
             <pre class="editor-highlight" id="highlight"></pre>
-            <textarea class="editor" id="code" spellcheck="false">rem Please be advised that not all language features are bug-free.
-rem Got bugs? https://github.com/Euphires/PseudoWoodo/issues
-rem I'm aware of at least three or so active issues, and there are probably more.
-rem The unit tests are also not perfect, but they do show a few of the problems.
+            <textarea class="editor" id="code" spellcheck="false">rem Please be advised that this is a work-in-progress and some features might not work properly.
+rem Got bugs? https://github.com/EuphoricPenguin/PseudoWoodo/issues
 console-log as 'Hello World'
 call console-log</textarea>
         </div>
@@ -370,25 +368,30 @@ call console-log</textarea>
         }
 
         function runCode() {
-            const code = document.getElementById('code').value;
-            const output = document.getElementById('output');
-            output.innerHTML = '';
+        const code = document.getElementById('code').value;
+        const output = document.getElementById('output');
+        output.innerHTML = '';
 
-            if (interpreter) interpreter.stop();
+        if (interpreter) interpreter.stop();
 
-            interpreter = new PseudoWoodoInterpreter(message => {
+        interpreter = new PseudoWoodoInterpreter(message => {
+            if (message === null) {
+                // Clear the output when message is null (from console-clear)
+                output.innerHTML = '';
+            } else {
                 const div = document.createElement('div');
-                div.textContent = message ?? '';
+                div.textContent = message;
                 output.appendChild(div);
-            });
+            }
+        });
 
-            interpreter.execute(code).catch(e => {
-                const errorDiv = document.createElement('div');
-                errorDiv.className = 'error';
-                errorDiv.textContent = `Error: ${e.message}`;
-                output.appendChild(errorDiv);
-            });
-        }
+        interpreter.execute(code).catch(e => {
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'error';
+            errorDiv.textContent = `Error: ${e.message}`;
+            output.appendChild(errorDiv);
+        });
+    }
 
         function sendInput() {
             // Placeholder function for the send button
