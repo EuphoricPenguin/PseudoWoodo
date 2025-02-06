@@ -225,6 +225,13 @@ set my-array as [10, 20, 30, 40]
 at-index 2 of my-array
 ```  
 
+It should be noted that this keyword also works with strings.
+
+```
+set str as 'foo'
+at-index 0 of str
+```
+
 This will result in a value of 30, as PseudoWoodo uses zero-based indexing.
 
 To modify an element at a specific index, use the `set-index` and `of` keywords with the `as` keyword to specify the new value.

@@ -234,24 +234,37 @@
             position: relative;
             display: flex;
             gap: 0px;
-            /* Decreased padding */
             margin-bottom: 5px;
             z-index: 1;
+            perspective: 1000px; /* Added for 3D effect */
         }
 
         .logo {
             width: 80px;
-            /* Decreased size */
             height: 80px;
-            /* Decreased size */
             position: relative;
             cursor: pointer;
+            transform-style: preserve-3d; /* Added for 3D effect */
         }
 
         .logo-version {
             font-size: 12px;
             color: var(--fg);
             position: relative;
+        }
+
+        /* Coin Spin Animation */
+        @keyframes coin-spin {
+            0% {
+                transform: rotateY(0deg);
+            }
+            100% {
+                transform: rotateY(1440deg); /* 4 full rotations */
+            }
+        }
+
+        .logo.spin {
+            animation: coin-spin 4s cubic-bezier(0.25, 0.1, 0.25, 1); /* Smooth deceleration */
         }
 
         /* Syntax Highlighting */
@@ -288,9 +301,7 @@
 
             .logo {
                 width: 60px;
-                /* Further decreased size for smaller screens */
                 height: 60px;
-                /* Further decreased size for smaller screens */
             }
 
             .logo-version {
@@ -313,7 +324,6 @@
         <button class="doc-button"
             onclick="window.location.href='https://github.com/EuphoricPenguin/PseudoWoodo/blob/main/PseudoWoodo%20Language%20Specification.md'">📚</button>
     </div>
-
 
     <div class="main-container">
         <div class="editor-container">
@@ -370,12 +380,18 @@ call console-log</textarea>
             const output = document.getElementById('output');
             output.innerHTML = '';
 
+            // Trigger logo spin animation
+            const logo = document.getElementById('logo1');
+            logo.classList.add('spin');
+            logo.addEventListener('animationend', () => {
+                logo.classList.remove('spin');
+            }, { once: true });
+
             if (interpreter) interpreter.stop();
 
             interpreter = new PseudoWoodoInterpreter(
                 message => {
                     if (message === null) {
-                        // Clear the output when message is null (from console-clear)
                         output.innerHTML = '';
                     } else {
                         const div = document.createElement('div');
@@ -405,9 +421,8 @@ call console-log</textarea>
             const inputValue = inputField.value.trim();
 
             if (interpreter && inputValue) {
-                // Provide the input to the interpreter
                 interpreter.provideInput(inputValue);
-                inputField.value = ''; // Clear the input field
+                inputField.value = '';
             }
         }
 
