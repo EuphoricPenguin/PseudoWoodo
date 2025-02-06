@@ -81,7 +81,7 @@ class PseudoWoodoInterpreter {
             }
 
             if (firstToken === 'set-index') {
-                this.handleSetIndexCommand(parts);
+                await this.handleSetIndexCommand(parts);
                 return;
             }
 
@@ -290,50 +290,35 @@ class PseudoWoodoInterpreter {
         return expr;
     }
 
-    handleSetIndexCommand(parts) {
+    async handleSetIndexCommand(parts) {
         const asIndex = parts.findIndex(p => p.toLowerCase() === 'as');
         if (asIndex === -1) throw new Error("Missing 'as' in 'set-index'");
+
+        // Extract the index part and value expression
         const indexPart = parts.slice(1, asIndex);
         const valueExpr = parts.slice(asIndex + 1).join(' ');
-        const value = this.evaluateExpression(valueExpr);
+        const value = await this.evaluateExpression(valueExpr);
 
-        const indices = [];
-        let arrayName = null;
-        let i = 0;
-
-        while (i < indexPart.length) {
-            const token = indexPart[i];
-            if (token.toLowerCase() === 'of') {
-                i++;
-                continue;
-            }
-            if (/^\d+$/.test(token)) {
-                indices.push(parseInt(token, 10));
-                i++;
-            } else {
-                arrayName = token;
-                break;
-            }
+        // Parse the index and array name
+        if (indexPart.length !== 3 || indexPart[1].toLowerCase() !== 'of') {
+            throw new Error("Invalid 'set-index' syntax: expected 'set-index <index> of <array> as <value>'");
         }
 
-        if (!arrayName) throw new Error("Array name not found");
-        indices.reverse(); // Reverse to access from outermost to innermost
+        const index = await this.evaluateExpression(indexPart[0]); // Evaluate the index (could be a variable or literal)
+        const arrayName = indexPart[2];
 
+        // Validate the array
         if (!this.vars[arrayName] || !Array.isArray(this.vars[arrayName])) {
             throw new Error(`'${arrayName}' is not an array`);
         }
 
-        let currentArray = this.vars[arrayName];
-        for (let j = 0; j < indices.length - 1; j++) {
-            const idx = indices[j];
-            if (idx < 0 || idx >= currentArray.length) throw new Error(`Index ${idx} out of bounds`);
-            currentArray = currentArray[idx];
-            if (!Array.isArray(currentArray)) throw new Error(`Element at index ${idx} is not an array`);
+        // Validate the index
+        if (typeof index !== 'number' || index < 0 || index >= this.vars[arrayName].length) {
+            throw new Error(`Index ${index} out of bounds`);
         }
 
-        const lastIdx = indices[indices.length - 1];
-        if (lastIdx < 0 || lastIdx >= currentArray.length) throw new Error(`Index ${lastIdx} out of bounds`);
-        currentArray[lastIdx] = value;
+        // Update the array
+        this.vars[arrayName][index] = value;
     }
 
     provideInput(value) {
