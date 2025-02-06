@@ -1,5 +1,5 @@
 class PseudoWoodoInterpreter {
-    constructor(onLog) {
+    constructor(onLog, onInput) {
         this.COMMAND_KEYWORDS = new Set(['set', 'call', 'if', 'rem', 'as', 'else']);
         this.SESSION_VARS = new Set(['timeout', 'console-log', 'console-clear']);
         this.vars = {};
@@ -9,6 +9,7 @@ class PseudoWoodoInterpreter {
         this.code = [];
         this.running = false;
         this.onLog = onLog;
+        this.onInput = onInput; // Callback to handle user input
     }
 
     async execute(code) {
@@ -67,7 +68,7 @@ class PseudoWoodoInterpreter {
                 const varName = parts[1];
                 const value = parts.slice(3).join(' ');
                 this.validateVariableName(varName, true);
-                this.vars[varName] = this.evaluateExpression(value);
+                this.vars[varName] = await this.evaluateExpression(value);
                 return;
             }
 
@@ -82,7 +83,7 @@ class PseudoWoodoInterpreter {
                 const varName = parts.slice(0, asIndex).join(' ');
                 const value = parts.slice(asIndex + 1).join(' ');
                 this.validateVariableName(varName, false);
-                this.vars[varName] = this.evaluateExpression(value);
+                this.vars[varName] = await this.evaluateExpression(value);
                 return;
             }
 
@@ -145,7 +146,7 @@ class PseudoWoodoInterpreter {
             // Handle variable reassignment directly in the if statement
             const tokens = line.slice(3).trim().split(/\s+/);
             let asIndex = -1;
-    
+
             // Find the last occurrence of 'as' to separate condition from assignment
             for (let i = tokens.length - 1; i >= 0; i--) {
                 if (tokens[i].toLowerCase() === 'as') {
@@ -153,34 +154,34 @@ class PseudoWoodoInterpreter {
                     break;
                 }
             }
-    
+
             if (asIndex === -1 || asIndex < 1 || asIndex === tokens.length - 1) {
                 throw new Error("Invalid 'if' syntax: expected 'as' for variable reassignment");
             }
-    
+
             const varName = tokens[asIndex - 1];
             const value = tokens.slice(asIndex + 1).join(' ');
             const condition = tokens.slice(0, asIndex - 1).join(' ');
-    
+
             if (this.evaluateCondition(condition)) {
                 // Perform variable reassignment
                 this.validateVariableName(varName, false);
-                this.vars[varName] = this.evaluateExpression(value);
+                this.vars[varName] = await this.evaluateExpression(value);
             }
         } else {
             // Handle label jumps (original behavior)
             const condition = line.slice(3, conditionEnd).trim();
             const trueTarget = line.slice(conditionEnd + 6).trim();
-    
+
             const elseIndex = trueTarget.toLowerCase().indexOf(' else call ');
             let falseTarget = null;
             let finalTarget = trueTarget;
-    
+
             if (elseIndex !== -1) {
                 finalTarget = trueTarget.slice(0, elseIndex).trim();
                 falseTarget = trueTarget.slice(elseIndex + 11).trim();
             }
-    
+
             if (this.evaluateCondition(condition)) {
                 await this.handleCall(finalTarget);
             } else if (falseTarget) {
@@ -189,15 +190,16 @@ class PseudoWoodoInterpreter {
         }
     }
 
-    jumpToLabel(label) {
-        const targetLine = this.labels[label];
-        if (targetLine !== undefined) {
-            this.currentLine = targetLine;
-        }
-    }
-
-    evaluateExpression(expr) {
+    async evaluateExpression(expr) {
         expr = this.normalizeExpression(expr);
+
+        // Handle the 'input' keyword
+        if (expr.trim().toLowerCase() === 'input') {
+            if (!this.onInput) {
+                throw new Error("Input functionality is not available.");
+            }
+            return await this.onInput();
+        }
 
         // Replace variables with their values, skipping those inside quotes
         expr = expr.replace(/(?:'[^']*'|"[^"]*"|(\b[a-zA-Z0-9-]+\b))/g, (match, g1) => {

@@ -313,14 +313,15 @@
     <div class="button-container">
         <button class="run-button" onclick="runCode()"></button>
         <button class="test-button" onclick="window.location.href='./test.html'">📋</button>
-        <button class="doc-button" onclick="window.location.href='https://github.com/EuphoricPenguin/PseudoWoodo/blob/main/PseudoWoodo%20Language%20Specification.md'">📚</button>
+        <button class="doc-button"
+            onclick="window.location.href='https://github.com/EuphoricPenguin/PseudoWoodo/blob/main/PseudoWoodo%20Language%20Specification.md'">📚</button>
     </div>
-    
+
 
     <div class="main-container">
         <div class="editor-container">
             <pre class="editor-highlight" id="highlight"></pre>
-            <textarea class="editor" id="code" spellcheck="false">rem Please be advised that this is a work-in-progress and some features might not work properly.
+            <textarea class="editor" id="code" spellcheck="false">rem Please be advised that this is a work in progress and some features might not work properly.
 rem Got bugs? https://github.com/EuphoricPenguin/PseudoWoodo/issues
 console-log as 'Hello World'
 call console-log</textarea>
@@ -368,30 +369,43 @@ call console-log</textarea>
         }
 
         function runCode() {
-        const code = document.getElementById('code').value;
-        const output = document.getElementById('output');
-        output.innerHTML = '';
+            const code = document.getElementById('code').value;
+            const output = document.getElementById('output');
+            output.innerHTML = '';
 
-        if (interpreter) interpreter.stop();
+            if (interpreter) interpreter.stop();
 
-        interpreter = new PseudoWoodoInterpreter(message => {
-            if (message === null) {
-                // Clear the output when message is null (from console-clear)
-                output.innerHTML = '';
-            } else {
-                const div = document.createElement('div');
-                div.textContent = message;
-                output.appendChild(div);
-            }
-        });
+            interpreter = new PseudoWoodoInterpreter(
+                message => {
+                    if (message === null) {
+                        // Clear the output when message is null (from console-clear)
+                        output.innerHTML = '';
+                    } else {
+                        const div = document.createElement('div');
+                        div.textContent = message;
+                        output.appendChild(div);
+                    }
+                },
+                async () => {
+                    // Handle user input
+                    const input = document.getElementById('user-input').value;
+                    document.getElementById('user-input').value = ''; // Clear input field
+                    return input;
+                }
+            );
 
-        interpreter.execute(code).catch(e => {
-            const errorDiv = document.createElement('div');
-            errorDiv.className = 'error';
-            errorDiv.textContent = `Error: ${e.message}`;
-            output.appendChild(errorDiv);
-        });
-    }
+            interpreter.execute(code).catch(e => {
+                const errorDiv = document.createElement('div');
+                errorDiv.className = 'error';
+                errorDiv.textContent = `Error: ${e.message}`;
+                output.appendChild(errorDiv);
+            });
+        }
+
+        function sendInput() {
+            // Trigger the interpreter to continue execution after receiving input
+            runCode();
+        }
 
         function sendInput() {
             // Placeholder function for the send button

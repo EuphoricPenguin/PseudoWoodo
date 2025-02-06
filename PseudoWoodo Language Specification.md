@@ -52,6 +52,13 @@ set long-variable-name as 'Wow, that's a pretty long variable name.'
 set number-two as 2
 ```
 
+You can also accept user input using the `input` keyword when declaring or reassigning a variable. Input halts execution until the user provides input.
+
+```
+set name as input
+name as input
+```
+
 ## Arithmetic Operators
 
 PseudoWoodo supports the `plus`, `minus`, `times`, and `over` operation keywords.

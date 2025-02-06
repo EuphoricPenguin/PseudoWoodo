@@ -1,3 +1,2 @@
 Add proper errors in the output - I think this might be a front end problem
 Add support for arrow key input, console prompts, basic sound output, and a canvas for raster graphics with a graphics library.
-Fix bug with console-clear and the relevant test.
