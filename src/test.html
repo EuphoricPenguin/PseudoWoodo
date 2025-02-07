@@ -364,6 +364,27 @@
             assert.equal(interpreter.vars['elem'], 30, "Should access correct element");
         });
 
+        QUnit.test("Access String Characters Using at-index", async assert => {
+            const code = `
+                set str as 'foo'
+                console-log as at-index 0 of str
+                call console-log
+                console-log as at-index 2 of str
+                call console-log
+                console-log as at-index 5 of str
+                call console-log
+            `;
+
+            const logs = [];
+            const interpreter = new PseudoWoodoInterpreter(msg => {
+                if (msg !== null) logs.push(msg);
+            });
+            await interpreter.execute(code);
+
+            assert.deepEqual(logs, ['f', 'o', ''],
+                "Should retrieve 'f' at index 0, 'o' at index 2, and '' for index 5");
+        });
+
         QUnit.test("Modify array elements", async assert => {
             const code = `
             set my-array as [10, 20, 30, 40]
@@ -476,6 +497,68 @@
             assert.true(cleared, "Clear signal should be sent");
             assert.equal(output.length, 0, "DOM output should be cleared");
             assert.ok(interpreter.output.length === 0, "Internal output should be cleared");
+        });
+
+        QUnit.test("Input and control flow", async assert => {
+            const done = assert.async();
+
+            const code = `
+        console-log as 'Please choose a room to enter (red/blue):'
+        call console-log
+
+        console-log as 'Red Room'
+        call console-log
+
+        console-log as 'Blue Room'
+        call console-log
+
+        set in as input
+
+        if in is-equal-to 'red' call red 
+        if in is-equal-to 'blue' call blue else call end
+
+        :red
+        console-log as 'This is the red room.'
+        call console-log
+        call end
+
+        :blue
+        console-log as 'This is the blue room.'
+        call console-log
+        call end
+
+        :end
+    `;
+
+            const logs = [];
+            const interpreter = new PseudoWoodoInterpreter(msg => {
+                if (msg !== null) logs.push(msg);
+            });
+
+            // Execute the code
+            interpreter.execute(code);
+
+            // Simulate user input after a short delay
+            setTimeout(() => {
+                interpreter.provideInput('blue');
+            }, 100);
+
+            // Wait for execution to complete
+            setTimeout(async () => {
+                await interpreter.execute(''); // Ensure execution completes
+
+                assert.deepEqual(
+                    logs,
+                    [
+                        'Please choose a room to enter (red/blue):',
+                        'Red Room',
+                        'Blue Room',
+                        'This is the blue room.'
+                    ],
+                    "Should log correct messages for blue room selection"
+                );
+                done();
+            }, 200);
         });
     </script>
 </body>
