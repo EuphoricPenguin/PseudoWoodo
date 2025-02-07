@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>TR-808 Synth</title>
+</head>
+
+<body>
+    <button onclick="playKick()">Kick</button>
+    <button onclick="playSnare()">Snare</button>
+    <button onclick="playClap()">Clap</button>
+    <button onclick="playHiHat()">Closed Hi-Hat</button>
+    <button onclick="playOpenHiHat()">Open Hi-Hat</button>
+    <button onclick="playTom()">Tom</button>
+
+    <div>
+        <h3>ADSR Controls</h3>
+        <label>Attack (ms): <input type="range" id="attack" min="1" max="1000" value="10"></label>
+        <label>Decay (ms): <input type="range" id="decay" min="1" max="1000" value="200"></label>
+        <label>Sustain (level): <input type="range" id="sustain" min="0" max="1" step="0.01" value="0.5"></label>
+        <label>Release (ms): <input type="range" id="release" min="1" max="1000" value="100"></label>
+    </div>
+
+    <script>
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        let noiseBuffer;
+
+        // Initialize white noise buffer
+        function createNoiseBuffer() {
+            const bufferSize = 2 * audioContext.sampleRate;
+            const buffer = audioContext.createBuffer(1, bufferSize, audioContext.sampleRate);
+            const output = buffer.getChannelData(0);
+
+            for (let i = 0; i < bufferSize; i++) {
+                output[i] = Math.random() * 2 - 1;
+            }
+            return buffer;
+        }
+
+        noiseBuffer = createNoiseBuffer();
+
+        function applyADSR(gainNode) {
+            const attack = document.getElementById('attack').value / 1000;
+            const decay = document.getElementById('decay').value / 1000;
+            const sustain = document.getElementById('sustain').value;
+            const release = document.getElementById('release').value / 1000;
+
+            const now = audioContext.currentTime;
+            gainNode.gain.setValueAtTime(0, now);
+            gainNode.gain.linearRampToValueAtTime(1, now + attack);
+            gainNode.gain.linearRampToValueAtTime(sustain, now + attack + decay);
+            gainNode.gain.setValueAtTime(sustain, now + attack + decay);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, now + attack + decay + release);
+        }
+
+        function playKick() {
+            const osc = audioContext.createOscillator();
+            osc.type = 'sine';
+
+            const gain = audioContext.createGain();
+
+            // Pitch envelope
+            osc.frequency.setValueAtTime(150, audioContext.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+
+            // Apply ADSR
+            applyADSR(gain);
+
+            osc.connect(gain).connect(audioContext.destination);
+            osc.start();
+            osc.stop(audioContext.currentTime + 0.5);
+        }
+
+        function playSnare() {
+            // Noise component
+            const noise = audioContext.createBufferSource();
+            noise.buffer = noiseBuffer;
+
+            const noiseFilter = audioContext.createBiquadFilter();
+            noiseFilter.type = 'highpass';
+            noiseFilter.frequency.value = 1000;
+
+            const noiseGain = audioContext.createGain();
+            noiseGain.gain.setValueAtTime(0.7, audioContext.currentTime);
+            noiseGain.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+
+            // Tone component
+            const osc = audioContext.createOscillator();
+            osc.type = 'triangle';
+            osc.frequency.value = 200;
+
+            const oscGain = audioContext.createGain();
+            // Apply ADSR
+            applyADSR(oscGain);
+            oscGain.gain.setValueAtTime(0.5, audioContext.currentTime);
+            oscGain.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
+
+            noise.connect(noiseFilter).connect(noiseGain).connect(audioContext.destination);
+            osc.connect(oscGain).connect(audioContext.destination);
+
+            noise.start();
+            osc.start();
+            noise.stop(audioContext.currentTime + 0.3);
+            osc.stop(audioContext.currentTime + 0.1);
+        }
+
+        function playClap() {
+            // Multiple noise bursts with delays
+            const times = [0, 0.02, 0.04];
+
+            times.forEach(offset => {
+                const noise = audioContext.createBufferSource();
+                noise.buffer = noiseBuffer;
+
+                const gain = audioContext.createGain();
+                // Apply ADSR
+                applyADSR(gain);
+                gain.gain.setValueAtTime(0.5, audioContext.currentTime + offset);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + offset + 0.2);
+
+                noise.connect(gain).connect(audioContext.destination);
+                noise.start(audioContext.currentTime + offset);
+                noise.stop(audioContext.currentTime + offset + 0.2);
+            });
+        }
+
+        function playHiHat() {
+            const noise = audioContext.createBufferSource();
+            noise.buffer = noiseBuffer;
+
+            const filter = audioContext.createBiquadFilter();
+            filter.type = 'bandpass';
+            filter.frequency.value = 8000;
+
+            const gain = audioContext.createGain();
+            // Apply ADSR
+            applyADSR(gain);
+            gain.gain.setValueAtTime(0.5, audioContext.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
+
+            noise.connect(filter).connect(gain).connect(audioContext.destination);
+            noise.start();
+            noise.stop(audioContext.currentTime + 0.1);
+        }
+
+        function playOpenHiHat() {
+            const noise = audioContext.createBufferSource();
+            noise.buffer = noiseBuffer;
+
+            const filter = audioContext.createBiquadFilter();
+            filter.type = 'bandpass';
+            filter.frequency.value = 6000;
+
+            const gain = audioContext.createGain();
+            // Apply ADSR
+            applyADSR(gain);
+            gain.gain.setValueAtTime(0.5, audioContext.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+
+            noise.connect(filter).connect(gain).connect(audioContext.destination);
+            noise.start();
+            noise.stop(audioContext.currentTime + 0.3);
+        }
+
+        function playTom() {
+            const osc = audioContext.createOscillator();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(100, audioContext.currentTime);
+
+            const gain = audioContext.createGain();
+            // Apply ADSR
+            applyADSR(gain);
+            gain.gain.setValueAtTime(0.7, audioContext.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+
+            osc.connect(gain).connect(audioContext.destination);
+            osc.start();
+            osc.stop(audioContext.currentTime + 0.5);
+        }
+    </script>
+</body>
+
+</html>
