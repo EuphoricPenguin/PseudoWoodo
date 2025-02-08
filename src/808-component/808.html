@@ -99,7 +99,7 @@
                 const mainGain = context.createGain();
                 const noiseGain = context.createGain();
                 const snappy = .9; // 0-1 control for noise amount
-                const toneValue = 0.8; // Control mix of frequencies
+                const toneValue = 0.; // Control mix of frequencies
                 const fundamentalFreq = 250; // Fundamental frequency of snare drum
                 const harmonicFreq = 500;    // Second harmonic frequency
                 const noiseFilterFreq = 2000; //Frequency of noise HPF
@@ -362,31 +362,72 @@
             },
 
             ch: (context) => {
-                const mainGain = context.createGain();
-                const noise = context.createBufferSource();
-                noise.buffer = createNoiseBuffer(context);
-
-                // Create high-pass filters
-                const hp1 = context.createBiquadFilter();
-                const hp2 = context.createBiquadFilter();
-
-                hp1.type = 'highpass';
-                hp1.frequency.value = 8000;
-
-                hp2.type = 'highpass';
-                hp2.frequency.value = 10000;
-
-                // Create envelope
+                const frequencies = [204, 298, 366, 515, 540, 800];
+                const oscillators = [];
+                const bandpass = context.createBiquadFilter();
+                const highpass = context.createBiquadFilter();
+                const lowpass = context.createBiquadFilter();
                 const env = context.createGain();
+
+                // Set filter parameters
+                bandpass.type = 'bandpass';
+                bandpass.frequency.value = 8500; // Slightly higher for closed hat
+                bandpass.Q.value = 9;
+
+                highpass.type = 'highpass';
+                highpass.frequency.value = 6500;
+                highpass.Q.value = 7;
+
+                lowpass.type = 'lowpass';
+                lowpass.frequency.value = 8600;
+                lowpass.Q.value = 3;
+
+                // Create envelope with specified decay, sustain, and release times
                 env.gain.setValueAtTime(0.6 * accentGain, context.currentTime);
-                env.gain.exponentialRampToValueAtTime(0.01, context.currentTime + 0.1);
+                env.gain.exponentialRampToValueAtTime(0.01, context.currentTime + 0.1); // Decay time = 40ms
+                env.gain.linearRampToValueAtTime(0, context.currentTime + 0.04); // Sustain = 0
+                env.gain.exponentialRampToValueAtTime(0.01, context.currentTime + 0.15); // Release time = 100ms
 
-                // Connect components
-                noise.connect(hp1).connect(hp2).connect(env).connect(context.destination);
+                // Create oscillators with frequency jitter and detuning
+                frequencies.forEach(freq => {
+                    const osc = context.createOscillator();
+                    osc.type = 'square';
+                    osc.frequency.setValueAtTime(freq, context.currentTime);
 
-                // Start and stop
-                noise.start();
-                noise.stop(context.currentTime + 0.1);
+                    // Add frequency modulation and jitter
+                    const mod = context.createOscillator();
+                    mod.type = 'sine';
+                    mod.frequency.setValueAtTime(0.01 * freq, context.currentTime);
+
+                    const noise = context.createBufferSource();
+                    noise.buffer = createNoiseBuffer(context);
+
+                    // Modulate frequency
+                    const sum = context.createGain();
+                    sum.gain.setValueAtTime(1.005, context.currentTime);
+                    mod.connect(sum);
+                    noise.connect(sum);
+                    sum.connect(osc.frequency);
+
+                    // Add drift to oscillator frequency
+                    const time = context.currentTime;
+                    osc.frequency.exponentialRampToValueAtTime(freq * 1.002, time + 0.1);
+                    osc.frequency.exponentialRampToValueAtTime(freq * 0.998, time + 0.2);
+
+                    osc.connect(bandpass);
+                    bandpass.connect(highpass);
+                    highpass.connect(lowpass);
+                    lowpass.connect(env);
+                    env.connect(context.destination);
+
+                    oscillators.push(osc);
+                });
+
+                // Start and stop oscillators
+                oscillators.forEach(osc => {
+                    osc.start();
+                    osc.stop(context.currentTime + 0.1);
+                });
             }
         };
 
