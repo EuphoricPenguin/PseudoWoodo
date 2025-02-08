@@ -1,4 +1,4 @@
-<img src="https://github.com/EuphoricPenguin/PseudoWoodo/blob/main/Logo-tree.png" width="125" alt="Logo">
+<img src="https://github.com/EuphoricPenguin/PseudoWoodo/blob/main/src/Logo-tree.png" width="125" alt="Logo">
 
 # PseudoWoodo
 An experimental interpreted language implemented in JavaScript primarily by DeepSeek, with syntax and UX design by EuphoricPenguin. Mistral Small 3 has also recently joined the team to help with front-end development.
