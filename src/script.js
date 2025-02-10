@@ -298,7 +298,15 @@ class PseudoWoodoInterpreter {
 
     provideInput(value) {
         if (this.inputResolver) {
-            this.inputResolver(value);
+            let parsedValue = value;
+            // Check if the input is a numeric string
+            if (typeof parsedValue === 'string') {
+                const trimmed = parsedValue.trim();
+                if (trimmed.match(/^[-+]?(\d+\.?\d*|\.\d+)$/)) {
+                    parsedValue = parseFloat(trimmed);
+                }
+            }
+            this.inputResolver(parsedValue);
             this.inputPromise = null;
             this.inputResolver = null;
         }
