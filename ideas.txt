@@ -1,3 +1,5 @@
 Add proper errors in the output - I think this might be a front end problem
 Add support for arrow key input, console prompts, basic sound output, and a canvas for raster graphics with a graphics library.
 fix syntax highlighting
+write a test case to ensure input remains halting
+write a test case to make sure numbers are treated as numbers when accepted as input
