@@ -105,17 +105,25 @@
             initialize() {
                 if (!this.audioContext) {
                     this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
-                    this.createLFO();
-                    console.log("Audio initialized");
+                    // Explicitly resume to handle browser autoplay policies
+                    this.audioContext.resume().then(() => {
+                        this.createLFO();
+                        console.log("Audio initialized and resumed");
+                    });
                 }
             }
 
             createLFO() {
                 this.lfo = this.audioContext.createOscillator();
                 const lfoGain = this.audioContext.createGain();
-                lfoGain.gain.value = 2;
+                lfoGain.gain.value = this.globalParams.lfoPitchModDepth / 64; // Normalize
                 this.lfo.connect(lfoGain);
-                this.lfo.frequency.value = 5;
+                this.lfo.frequency.value = this.globalParams.lfoSpeed / 16; // Adjust scaling
+
+                // Apply LFO to all operators' frequencies
+                this.operators.forEach((op, index) => {
+                    lfoGain.connect(op.oscillator.frequency);
+                });
                 this.lfo.start();
             }
 
@@ -178,17 +186,21 @@
 
                 const oscillator = this.audioContext.createOscillator();
                 const gain = this.audioContext.createGain();
-                const frequency = 440 * Math.pow(2, (opParams.freqCoarse - 69) / 12) * (1 + opParams.freqFine / 100);
+                const freqCoarse = opParams.freqCoarse;
+                const freqFine = opParams.freqFine / 100; // 0–1.0
+                const frequency = 440 * Math.pow(2, (freqCoarse - 69)/12 + freqFine);
 
                 oscillator.type = 'sine';
                 oscillator.frequency.setValueAtTime(frequency, now);
 
                 // Apply envelope
                 const env = opParams.egRates;
-                gain.gain.setValueAtTime(0, now);
-                gain.gain.linearRampToValueAtTime(1, now + env.attack);
-                gain.gain.linearRampToValueAtTime(opParams.egLevels.level1 / 100, now + env.attack + env.decay1);
-                gain.gain.linearRampToValueAtTime(opParams.egLevels.level2 / 100, now + env.attack + env.decay1 + env.decay2);
+                const levels = opParams.egLevels;
+                gain.gain.setValueCurveAtTime(
+                    [0, 1, levels.level1/100, levels.level2/100],
+                    now,
+                    env.attack + env.decay1 + env.decay2
+                );
 
                 return { oscillator, gain, releaseTime: env.release };
             }
@@ -240,19 +252,18 @@
             }
 
             parseCartridgeData(data) {
-                // Check if the file size is 4104 bytes (standard DX7 SysEx file size)
-                if (data.length !== 4104) {
-                    console.error("Invalid cartridge file size. Expected 4104 bytes.");
-                    return;
-                }
+                let offset = 0;
+                // Skip SysEx header (F0 ... F7)
+                while (data[offset] !== 0xF0) offset++;
+                while (data[offset] !== 0xF7) offset++;
+                offset++; // Move past F7
 
                 // Extract the 32 patches from the SysEx file
                 this.patches = [];
-                const patchStartIndex = 6; // Skip SysEx header and metadata
                 const patchSize = 128; // Each patch is 128 bytes
 
                 for (let i = 0; i < 32; i++) {
-                    const patchData = data.slice(patchStartIndex + i * patchSize, patchStartIndex + (i + 1) * patchSize);
+                    const patchData = data.slice(offset + i * patchSize, offset + (i + 1) * patchSize);
                     const nameData = new Uint8Array(patchData.slice(118, 128));
                     let patchName = '';
                     nameData.forEach(byte => {
@@ -286,8 +297,11 @@
                             { from: 5, to: 4 }, { from: 4, to: 3 },
                             { from: 2, to: 1 }, { from: 1, to: 0 }
                         );
-                        operators[3].gain.connect(operators[3].oscillator.frequency);
-                        operators[0].gain.connect(operators[0].oscillator.frequency);
+                        // Apply feedback to operator 3
+                        const feedbackGain = this.audioContext.createGain();
+                        feedbackGain.gain.value = this.globalParams.feedback / 7; // Scale 0–7
+                        operators[3].gain.connect(feedbackGain);
+                        feedbackGain.connect(operators[3].oscillator.frequency);
                         carriers.push(3, 0);
                         break;
                     case 3:
@@ -468,6 +482,5 @@
         });
     </script>
 </body>
-
 
 </html>
