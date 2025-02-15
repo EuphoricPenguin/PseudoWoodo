@@ -23,6 +23,21 @@
         button:hover {
             background: #555;
         }
+
+        .knob-container {
+            margin: 10px;
+            color: white;
+            text-align: center;
+        }
+
+        .knob-container label {
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        .knob-container input {
+            width: 100px;
+        }
     </style>
 </head>
 
@@ -41,12 +56,46 @@
         <button id="cy">Cymbal</button>
         <button id="oh">Open HiHat</button>
         <button id="ch">Closed HiHat</button>
-        <button id="accent">Accent</button>
+
+        <!-- Tuning knobs for hihat oscillators -->
+        <div class="knob-container">
+            <label for="osc1-tune" id="osc1-label">Oscillator 1: 800 Hz</label>
+            <input type="range" id="osc1-tune" min="359.4" max="1149.9" step="0.1" value="800"
+                oninput="updateOscillatorFrequencies()">
+        </div>
+        <div class="knob-container">
+            <label for="osc2-tune" id="osc2-label">Oscillator 2: 540 Hz</label>
+            <input type="range" id="osc2-tune" min="254.3" max="627.2" step="0.1" value="540"
+                oninput="updateOscillatorFrequencies()">
+        </div>
     </div>
 
     <script>
         let audioContext;
-        let accentGain = 1;
+
+        // Default frequencies for the tunable oscillators
+        let osc1Frequency = 800; // Oscillator 1 (800 Hz)
+        let osc2Frequency = 540; // Oscillator 2 (540 Hz)
+
+        // Function to update oscillator frequencies and labels
+        function updateOscillatorFrequencies() {
+            // Get slider values
+            const osc1Value = parseFloat(document.getElementById('osc1-tune').value);
+            const osc2Value = parseFloat(document.getElementById('osc2-tune').value);
+
+            // Update frequencies
+            osc1Frequency = osc1Value;
+            osc2Frequency = osc2Value;
+
+            // Update label text with current values
+            document.getElementById('osc1-label').textContent =
+                `Oscillator 1: ${osc1Value.toFixed(1)} Hz`;
+            document.getElementById('osc2-label').textContent =
+                `Oscillator 2: ${osc2Value.toFixed(1)} Hz`;
+        }
+
+        // Initialize labels with current slider values on page load
+        updateOscillatorFrequencies();
 
         function initAudioContext() {
             if (!audioContext) {
@@ -87,7 +136,7 @@
                 osc.frequency.setValueAtTime(150, context.currentTime);
                 osc.frequency.exponentialRampToValueAtTime(0.01, context.currentTime + 0.3);
 
-                gain.gain.setValueAtTime(1 * accentGain, context.currentTime);
+                gain.gain.setValueAtTime(1, context.currentTime);
                 gain.gain.exponentialRampToValueAtTime(0.01, context.currentTime + 0.5);
 
                 osc.connect(filter).connect(gain).connect(context.destination);
@@ -131,7 +180,7 @@
                 noiseFilter.frequency.value = noiseFilterFreq;
 
                 // Envelopes
-                mainGain.gain.setValueAtTime(1 * accentGain, context.currentTime);
+                mainGain.gain.setValueAtTime(1, context.currentTime);
                 mainGain.gain.exponentialRampToValueAtTime(0.001, context.currentTime + mainDecay);
 
                 noiseGain.gain.setValueAtTime(snappy, context.currentTime);
@@ -161,7 +210,7 @@
                 osc.frequency.setValueAtTime(100, context.currentTime);
                 osc.frequency.exponentialRampToValueAtTime(0.01, context.currentTime + 0.5);
 
-                gain.gain.setValueAtTime(0.7 * accentGain, context.currentTime);
+                gain.gain.setValueAtTime(0.7, context.currentTime);
                 gain.gain.exponentialRampToValueAtTime(0.01, context.currentTime + 0.7);
 
                 osc.connect(gain).connect(context.destination);
@@ -177,7 +226,7 @@
                 osc.frequency.setValueAtTime(200, context.currentTime);
                 osc.frequency.exponentialRampToValueAtTime(0.01, context.currentTime + 0.4);
 
-                gain.gain.setValueAtTime(0.7 * accentGain, context.currentTime);
+                gain.gain.setValueAtTime(0.7, context.currentTime);
                 gain.gain.exponentialRampToValueAtTime(0.01, context.currentTime + 0.6);
 
                 osc.connect(gain).connect(context.destination);
@@ -193,7 +242,7 @@
                 osc.frequency.setValueAtTime(300, context.currentTime);
                 osc.frequency.exponentialRampToValueAtTime(0.01, context.currentTime + 0.3);
 
-                gain.gain.setValueAtTime(0.7 * accentGain, context.currentTime);
+                gain.gain.setValueAtTime(0.7, context.currentTime);
                 gain.gain.exponentialRampToValueAtTime(0.01, context.currentTime + 0.5);
 
                 osc.connect(gain).connect(context.destination);
@@ -202,20 +251,72 @@
             },
 
             rs: (context) => {
-                const noise = context.createBufferSource();
-                const filter = context.createBiquadFilter();
-                const gain = context.createGain();
+                const osc1 = context.createOscillator();
+                const osc2 = context.createOscillator();
+                const mixer = context.createGain();
+                const adsrGain = context.createGain();
+                const eq1 = context.createBiquadFilter();
+                const eq2 = context.createBiquadFilter();
 
-                noise.buffer = createNoiseBuffer(context);
-                filter.type = 'bandpass';
-                filter.frequency.value = 1500;
+                // Set up oscillators
+                osc1.type = 'sawtooth';
+                osc1.frequency.value = 449;
+                osc2.type = 'square';
+                osc2.frequency.value = 1704;
 
-                gain.gain.setValueAtTime(0.8 * accentGain, context.currentTime);
-                gain.gain.exponentialRampToValueAtTime(0.01, context.currentTime + 0.1);
+                // Set up mixer
+                mixer.gain.value = 0.5; // Adjust as needed
 
-                noise.connect(filter).connect(gain).connect(context.destination);
-                noise.start();
-                noise.stop(context.currentTime + 0.1);
+                // Set up ADSR envelope
+                const currentTime = context.currentTime;
+                const attack = 0.0005; // Shorter attack for sharper click
+                const hold = 0.01; // Shorter hold
+                const decay = 0.005; // Shorter decay
+                const sustain = 0; // No sustain
+                const release = 0.005; // Shorter release
+
+                // Attack phase: gain goes from 0 to 1 over 'attack' time
+                adsrGain.gain.setValueAtTime(0, currentTime);
+                adsrGain.gain.linearRampToValueAtTime(1, currentTime + attack);
+
+                // Hold phase: gain remains at 1 for 'hold' time
+                adsrGain.gain.setValueAtTime(1, currentTime + attack);
+                adsrGain.gain.setValueAtTime(1, currentTime + attack + hold);
+
+                // Decay phase: gain goes from 1 to 'sustain' level over 'decay' time
+                adsrGain.gain.linearRampToValueAtTime(sustain, currentTime + attack + hold + decay);
+
+                // Release phase: gain goes from 'sustain' to 0 over 'release' time
+                adsrGain.gain.linearRampToValueAtTime(0, currentTime + attack + hold + decay + release);
+
+                // Set up EQ1 (2822 Hz, peaking)
+                eq1.type = 'peaking';
+                eq1.frequency.value = 2822;
+                eq1.Q.value = 0.3; // Narrower bandwidth for more focus
+                eq1.gain.value = 18; // Increased gain for more presence
+
+                // Set up EQ2 (532 Hz, peaking)
+                eq2.type = 'peaking';
+                eq2.frequency.value = 532;
+                eq2.Q.value = 0.4; // Adjusted bandwidth
+                eq2.gain.value = 15; // Increased gain
+
+                // Connect the nodes
+                osc1.connect(mixer);
+                osc2.connect(mixer);
+                mixer.connect(adsrGain);
+                adsrGain.connect(eq1);
+                eq1.connect(eq2);
+                eq2.connect(context.destination);
+
+                // Start oscillators
+                osc1.start(currentTime);
+                osc2.start(currentTime);
+
+                // Stop oscillators after the total duration
+                const totalDuration = attack + hold + decay + release;
+                osc1.stop(currentTime + totalDuration);
+                osc2.stop(currentTime + totalDuration);
             },
 
             cl: (context) => {
@@ -228,7 +329,7 @@
                 filter.frequency.value = 2000;
                 filter.Q.value = 10;
 
-                gain.gain.setValueAtTime(0.8 * accentGain, context.currentTime);
+                gain.gain.setValueAtTime(0.8, context.currentTime);
                 gain.gain.exponentialRampToValueAtTime(0.01, context.currentTime + 0.2);
 
                 noise.connect(filter).connect(gain).connect(context.destination);
@@ -237,20 +338,52 @@
             },
 
             cp: (context) => {
+                // Create white noise buffer
+                const noiseBuffer = createNoiseBuffer(context, 0.15); // 150ms of noise
                 const noise = context.createBufferSource();
+                noise.buffer = noiseBuffer;
+
+                // Bandpass filter (centered at 1000Hz)
                 const filter = context.createBiquadFilter();
-                const gain = context.createGain();
-
-                noise.buffer = createNoiseBuffer(context);
                 filter.type = 'bandpass';
-                filter.frequency.value = 1200;
+                filter.frequency.value = 1000; // Center frequency
+                filter.Q.value = 4; // Quality factor
 
-                gain.gain.setValueAtTime(0.7 * accentGain, context.currentTime);
-                gain.gain.exponentialRampToValueAtTime(0.01, context.currentTime + 0.4);
+                // Create two VCAs for parallel paths
+                const vca1 = context.createGain(); // Snap envelope VCA
+                const vca2 = context.createGain(); // Reverb envelope VCA
 
-                noise.connect(filter).connect(gain).connect(context.destination);
-                noise.start();
-                noise.stop(context.currentTime + 0.4);
+                // Connect the audio graph
+                noise.connect(filter);
+                filter.connect(vca1);
+                filter.connect(vca2);
+                vca1.connect(context.destination);
+                vca2.connect(context.destination);
+
+                // Get current time
+                const now = context.currentTime;
+
+                // Snap envelope (3 fast decays + 1 longer decay)
+                vca1.gain.setValueAtTime(0, now);
+                const snapTimes = [
+                    [0, 0.01],   // 0-10ms
+                    [0.01, 0.01],// 10-20ms
+                    [0.02, 0.01],// 20-30ms
+                    [0.03, 0.02] // 30-50ms
+                ];
+
+                snapTimes.forEach(([start, duration]) => {
+                    vca1.gain.setValueAtTime(1, now + start);
+                    vca1.gain.linearRampToValueAtTime(0.001, now + start + duration);
+                });
+
+                // Reverb envelope (100ms exponential decay)
+                vca2.gain.setValueAtTime(1, now);
+                vca2.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
+
+                // Start noise and stop when envelopes complete
+                noise.start(now);
+                noise.stop(now + 0.15); // Stop after 150ms
             },
 
             ma: (context) => {
@@ -262,7 +395,7 @@
                 filter.type = 'highpass';
                 filter.frequency.value = 3000;
 
-                gain.gain.setValueAtTime(0.6 * accentGain, context.currentTime);
+                gain.gain.setValueAtTime(0.6, context.currentTime);
                 gain.gain.exponentialRampToValueAtTime(0.01, context.currentTime + 0.3);
 
                 noise.connect(filter).connect(gain).connect(context.destination);
@@ -271,38 +404,55 @@
             },
 
             cb: (context) => {
-                const osc1 = context.createOscillator();
-                const osc2 = context.createOscillator();
-                const gain = context.createGain();
+                // Create oscillators
+                const osc1 = context.createOscillator(); // Lower frequency oscillator
+                const osc2 = context.createOscillator(); // Higher frequency oscillator
+
+                // Set oscillator types to square waves
+                osc1.type = 'square';
+                osc2.type = 'square';
+
+                // Set frequencies with slight detuning
+                osc1.frequency.value = 540; // C#5 -45c (from service manual)
+                osc2.frequency.value = 800; // G5 +35c (from service manual)
+
+                // Create a mixer to balance the oscillators
+                const mixer = context.createGain();
+                mixer.gain.value = 0.5; // Overall gain
+
+                // Create a bandpass filter
                 const filter = context.createBiquadFilter();
+                filter.type = 'bandpass'; // BP2 (default)
+                filter.frequency.value = 1200; // Center frequency (adjust to taste)
+                filter.Q.value = 4; // Moderate resonance
 
-                // Oscillator types and frequencies
-                osc1.type = 'square';  // First oscillator
-                osc1.frequency.value = 540;
+                // Create a VCA with an AR envelope
+                const vca = context.createGain();
+                vca.gain.setValueAtTime(0, context.currentTime);
 
-                osc2.type = 'square';  // Second oscillator
-                osc2.frequency.value = 800;
+                // AR envelope settings
+                const attackTime = 0.005; // Very short attack (5ms)
+                const releaseTime = 0.25; // Moderate release (250ms)
 
-                // Envelope settings
-                gain.gain.setValueAtTime(0, context.currentTime);
-                gain.gain.linearRampToValueAtTime(0.9 * accentGain, context.currentTime + 0.01); // Short attack
-                gain.gain.exponentialRampToValueAtTime(0.01, context.currentTime + 0.25); // Medium release
+                // Apply the envelope
+                vca.gain.linearRampToValueAtTime(1, context.currentTime + attackTime); // Attack
+                vca.gain.exponentialRampToValueAtTime(0.001, context.currentTime + attackTime + releaseTime); // Release
 
-                // Optional bandpass filter
-                filter.type = 'bandpass';
-                filter.frequency.value = 1200;
-                filter.Q.value = 8;
+                // Connect the audio graph
+                osc1.connect(mixer);
+                osc2.connect(mixer);
+                mixer.connect(filter);
+                filter.connect(vca);
+                vca.connect(context.destination);
 
-                // Connect oscillators
-                osc1.connect(gain);
-                osc2.connect(gain);
-                gain.connect(filter).connect(context.destination);
-
-                // Start and stop oscillators
+                // Start oscillators
                 osc1.start();
                 osc2.start();
-                osc1.stop(context.currentTime + 0.3);
-                osc2.stop(context.currentTime + 0.3);
+
+                // Stop oscillators after the sound completes
+                const totalDuration = attackTime + releaseTime;
+                osc1.stop(context.currentTime + totalDuration);
+                osc2.stop(context.currentTime + totalDuration);
             },
 
             cy: (context) => {
@@ -322,7 +472,7 @@
 
                 // Create envelope
                 const env = context.createGain();
-                env.gain.setValueAtTime(0.5 * accentGain, context.currentTime);
+                env.gain.setValueAtTime(0.5, context.currentTime);
                 env.gain.exponentialRampToValueAtTime(0.01, context.currentTime + 0.5);
 
                 // Connect components
@@ -334,114 +484,146 @@
             },
 
             oh: (context) => {
-                const mainGain = context.createGain();
+                // Frequencies for the hihat oscillators
+                const frequencies = [osc1Frequency, osc2Frequency, 522.7, 369.6, 304.4, 205.3]; // Frequencies in Hz
+                const oscillators = frequencies.map(freq => {
+                    const osc = context.createOscillator();
+                    osc.type = 'square';
+                    osc.frequency.value = freq;
+                    return osc;
+                });
+
+                // Create noise source for metallic texture
                 const noise = context.createBufferSource();
                 noise.buffer = createNoiseBuffer(context);
 
-                // Create high-pass filters
-                const hp1 = context.createBiquadFilter();
-                const hp2 = context.createBiquadFilter();
+                // Create filters (bandpass and high-pass in parallel)
+                const bandpass = context.createBiquadFilter();
+                bandpass.type = 'bandpass';
+                bandpass.frequency.value = 10000; // Center frequency (8,000 to 12,000 Hz)
+                bandpass.Q.value = 4; // Moderate resonance
 
-                hp1.type = 'highpass';
-                hp1.frequency.value = 6000;
+                const highpass = context.createBiquadFilter();
+                highpass.type = 'highpass';
+                highpass.frequency.value = 8000; // High-pass cutoff
 
-                hp2.type = 'highpass';
-                hp2.frequency.value = 8000;
+                // Create a mixer for the filters
+                const mixer = context.createGain();
+                mixer.gain.value = 0.5; // Adjust to taste
 
-                // Create envelope
-                const env = context.createGain();
-                env.gain.setValueAtTime(0.5 * accentGain, context.currentTime);
-                env.gain.exponentialRampToValueAtTime(0.01, context.currentTime + 0.6);
+                // Create VCA with envelope
+                const vca = context.createGain();
+                vca.gain.setValueAtTime(0, context.currentTime);
 
-                // Connect components
-                noise.connect(hp1).connect(hp2).connect(env).connect(context.destination);
+                // Simulate MIDI pitch CV controlling decay time (high pitch = longer decay)
+                const decayTime = 0.6; // Longer decay for open hihat
 
-                // Start and stop
+                // Apply envelope
+                vca.gain.linearRampToValueAtTime(1, context.currentTime + 0.01); // Attack
+                vca.gain.exponentialRampToValueAtTime(0.001, context.currentTime + decayTime); // Decay
+
+                // Connect oscillators and noise to filters
+                oscillators.forEach(osc => {
+                    osc.connect(bandpass);
+                    osc.connect(highpass);
+                });
+                noise.connect(bandpass);
+                noise.connect(highpass);
+
+                // Connect filters to mixer
+                bandpass.connect(mixer);
+                highpass.connect(mixer);
+
+                // Connect mixer to VCA
+                mixer.connect(vca);
+                vca.connect(context.destination);
+
+                // Start oscillators and noise
+                oscillators.forEach(osc => osc.start());
                 noise.start();
-                noise.stop(context.currentTime + 0.7);
+
+                // Stop oscillators and noise after decay
+                oscillators.forEach(osc => osc.stop(context.currentTime + decayTime));
+                noise.stop(context.currentTime + decayTime);
             },
 
             ch: (context) => {
-                const frequencies = [204, 298, 366, 515, 540, 800];
-                const oscillators = [];
-                const bandpass = context.createBiquadFilter();
-                const highpass = context.createBiquadFilter();
-                const lowpass = context.createBiquadFilter();
-                const env = context.createGain();
-
-                // Set filter parameters
-                bandpass.type = 'bandpass';
-                bandpass.frequency.value = 8500; // Slightly higher for closed hat
-                bandpass.Q.value = 9;
-
-                highpass.type = 'highpass';
-                highpass.frequency.value = 6500;
-                highpass.Q.value = 7;
-
-                lowpass.type = 'lowpass';
-                lowpass.frequency.value = 8600;
-                lowpass.Q.value = 3;
-
-                // Create envelope with specified decay, sustain, and release times
-                env.gain.setValueAtTime(0.6 * accentGain, context.currentTime);
-                env.gain.exponentialRampToValueAtTime(0.01, context.currentTime + 0.1); // Decay time = 40ms
-                env.gain.linearRampToValueAtTime(0, context.currentTime + 0.04); // Sustain = 0
-                env.gain.exponentialRampToValueAtTime(0.01, context.currentTime + 0.15); // Release time = 100ms
-
-                // Create oscillators with frequency jitter and detuning
-                frequencies.forEach(freq => {
+                // Frequencies for the hihat oscillators
+                const frequencies = [osc1Frequency, osc2Frequency, 522.7, 369.6, 304.4, 205.3]; // Frequencies in Hz
+                const oscillators = frequencies.map(freq => {
                     const osc = context.createOscillator();
                     osc.type = 'square';
-                    osc.frequency.setValueAtTime(freq, context.currentTime);
-
-                    // Add frequency modulation and jitter
-                    const mod = context.createOscillator();
-                    mod.type = 'sine';
-                    mod.frequency.setValueAtTime(0.01 * freq, context.currentTime);
-
-                    const noise = context.createBufferSource();
-                    noise.buffer = createNoiseBuffer(context);
-
-                    // Modulate frequency
-                    const sum = context.createGain();
-                    sum.gain.setValueAtTime(1.005, context.currentTime);
-                    mod.connect(sum);
-                    noise.connect(sum);
-                    sum.connect(osc.frequency);
-
-                    // Add drift to oscillator frequency
-                    const time = context.currentTime;
-                    osc.frequency.exponentialRampToValueAtTime(freq * 1.002, time + 0.1);
-                    osc.frequency.exponentialRampToValueAtTime(freq * 0.998, time + 0.2);
-
-                    osc.connect(bandpass);
-                    bandpass.connect(highpass);
-                    highpass.connect(lowpass);
-                    lowpass.connect(env);
-                    env.connect(context.destination);
-
-                    oscillators.push(osc);
+                    osc.frequency.value = freq;
+                    return osc;
                 });
 
-                // Start and stop oscillators
+                // Create noise source for metallic texture
+                const noise = context.createBufferSource();
+                noise.buffer = createNoiseBuffer(context);
+
+                // Create filters (bandpass and high-pass in parallel)
+                const bandpass = context.createBiquadFilter();
+                bandpass.type = 'bandpass';
+                bandpass.frequency.value = 10000; // Center frequency (8,000 to 12,000 Hz)
+                bandpass.Q.value = 4; // Moderate resonance
+
+                const highpass = context.createBiquadFilter();
+                highpass.type = 'highpass';
+                highpass.frequency.value = 8000; // High-pass cutoff
+
+                // Create a mixer for the filters
+                const mixer = context.createGain();
+                mixer.gain.value = 0.5; // Adjust to taste
+
+                // Create VCA with envelope
+                const vca = context.createGain();
+                vca.gain.setValueAtTime(0, context.currentTime);
+
+                // Simulate MIDI pitch CV controlling decay time (low pitch = shorter decay)
+                const decayTime = 0.1; // Shorter decay for closed hihat
+
+                // Apply envelope
+                vca.gain.linearRampToValueAtTime(1, context.currentTime + 0.01); // Attack
+                vca.gain.exponentialRampToValueAtTime(0.001, context.currentTime + decayTime); // Decay
+
+                // Connect oscillators and noise to filters
                 oscillators.forEach(osc => {
-                    osc.start();
-                    osc.stop(context.currentTime + 0.1);
+                    osc.connect(bandpass);
+                    osc.connect(highpass);
                 });
+                noise.connect(bandpass);
+                noise.connect(highpass);
+
+                // Connect filters to mixer
+                bandpass.connect(mixer);
+                highpass.connect(mixer);
+
+                // Connect mixer to VCA
+                mixer.connect(vca);
+                vca.connect(context.destination);
+
+                // Start oscillators and noise
+                oscillators.forEach(osc => osc.start());
+                noise.start();
+
+                // Stop oscillators and noise after decay
+                oscillators.forEach(osc => osc.stop(context.currentTime + decayTime));
+                noise.stop(context.currentTime + decayTime);
             }
         };
 
         // Add event listeners
         document.querySelectorAll('button').forEach(button => {
             button.addEventListener('click', (e) => {
-                if (e.target.id === 'accent') {
-                    accentGain = 2;
-                    setTimeout(() => accentGain = 1, 50);
-                } else if (sounds[e.target.id]) {
+                if (sounds[e.target.id]) {
                     playSound(sounds[e.target.id]);
                 }
             });
         });
+
+        // Add event listeners for tuning knobs
+        document.getElementById('osc1-tune').addEventListener('input', updateOscillatorFrequencies);
+        document.getElementById('osc2-tune').addEventListener('input', updateOscillatorFrequencies);
     </script>
 </body>
 

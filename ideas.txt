@@ -3,3 +3,17 @@ Add support for arrow key input, console prompts, basic sound output, and a canv
 fix syntax highlighting
 write a test case to ensure input remains halting
 write a test case to make sure numbers are treated as numbers when accepted as input
+
+fix this:
+
+console-log as 'What is your name?'
+call console-log
+set in as input
+call console-clear
+console-log as 'Hello, ' plus in plus '!'
+call console-log
+set timeout as 2
+call timeout
+call console-clear
+
+Timeout is preventing console-clear from running at the end
