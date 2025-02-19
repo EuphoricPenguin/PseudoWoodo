@@ -22,21 +22,6 @@
         button:hover {
             background: #555;
         }
-
-        .knob-container {
-            margin: 10px;
-            color: white;
-            text-align: center;
-        }
-
-        .knob-container label {
-            display: block;
-            margin-bottom: 5px;
-        }
-
-        .knob-container input {
-            width: 100px;
-        }
     </style>
 </head>
 <body>
@@ -54,18 +39,40 @@
         <button id="cy">Cymbal</button>
         <button id="oh">Open HiHat</button>
         <button id="ch">Closed HiHat</button>
-
-        <!-- Tuning knobs for hihat oscillators -->
-        <div class="knob-container">
-            <label for="osc1-tune" id="osc1-label">Oscillator 1: 800 Hz</label>
-            <input type="range" id="osc1-tune" min="359.4" max="1149.9" step="0.1" value="800">
-        </div>
-        <div class="knob-container">
-            <label for="osc2-tune" id="osc2-label">Oscillator 2: 540 Hz</label>
-            <input type="range" id="osc2-tune" min="254.3" max="627.2" step="0.1" value="540">
-        </div>
     </div>
 
-    <script src="808.js"></script>
+    <script src="./808.js"></script>
+    <script>
+        // Initialize the DrumSynth instance and AudioContext
+        let drumMachine;
+        let audioContext;
+
+        // Function to initialize the AudioContext and DrumSynth
+        function initializeAudio() {
+            if (!audioContext) {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                drumMachine = new DrumSynth(audioContext);
+            }
+        }
+
+        // Function to attach event listeners to buttons
+        function setupDrumMachine() {
+            const buttons = document.querySelectorAll('.drum-machine button');
+            buttons.forEach(button => {
+                button.addEventListener('click', () => {
+                    // Initialize audio on first interaction
+                    if (!audioContext) {
+                        initializeAudio();
+                    }
+
+                    const soundKey = button.id;
+                    drumMachine.play(soundKey);
+                });
+            });
+        }
+
+        // Call the setup function when the DOM is fully loaded
+        document.addEventListener('DOMContentLoaded', setupDrumMachine);
+    </script>
 </body>
 </html>
