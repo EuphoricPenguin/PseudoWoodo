@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>TR-808 Emulator with Sequencer</title>
+    <style>
+        .drum-machine {
+            padding: 20px;
+            background: #333;
+            display: inline-block;
+            color: white;
+        }
+
+        button {
+            padding: 10px;
+            margin: 5px;
+            width: 100px;
+            background: #444;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: #555;
+        }
+
+        .sequencer {
+            margin-top: 20px;
+        }
+
+        .sequencer-step {
+            display: inline-block;
+            width: 30px;
+            height: 30px;
+            margin: 2px;
+            background: #444;
+            cursor: pointer;
+        }
+
+        .sequencer-step.active {
+            background: #ffcc00;
+        }
+
+        .controls {
+            margin-top: 20px;
+        }
+
+        .gain-control {
+            margin: 10px 0;
+        }
+
+        .gain-control label {
+            display: inline-block;
+            width: 100px;
+        }
+    </style>
+</head>
+<body>
+    <div class="drum-machine">
+        <button id="bd">Bass Drum</button>
+        <button id="sd">Snare</button>
+        <button id="lt">Low Tom</button>
+        <button id="mt">Mid Tom</button>
+        <button id="ht">High Tom</button>
+        <button id="rs">Rim Shot</button>
+        <button id="cl">Claves</button>
+        <button id="cp">Clap</button>
+        <button id="ma">Maracas</button>
+        <button id="cb">Cowbell</button>
+        <button id="cy">Cymbal</button>
+        <button id="oh">Open HiHat</button>
+        <button id="ch">Closed HiHat</button>
+
+        <div class="controls">
+            <label for="bpm">BPM:</label>
+            <input type="number" id="bpm" value="120" min="60" max="240">
+            <button id="start">Start</button>
+            <button id="stop">Stop</button>
+        </div>
+
+        <div class="sequencer">
+            <!-- Sequencer steps will be dynamically generated -->
+        </div>
+
+        <div class="gain-controls">
+            <!-- Gain controls will be dynamically generated -->
+        </div>
+    </div>
+
+    <script src="./808.js"></script>
+    <script>
+        // Initialize the DrumSynth instance and AudioContext
+        let drumMachine;
+        let audioContext;
+        let isPlaying = false;
+        let currentStep = 0;
+        let intervalId;
+        const steps = 16;
+        const sequencerState = {};
+        const gainNodes = {};
+
+        // Function to initialize the AudioContext and DrumSynth
+        function initializeAudio() {
+            if (!audioContext) {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                drumMachine = new DrumSynth(audioContext);
+
+                // Initialize gain nodes for each drum
+                const drumKeys = ['bd', 'sd', 'lt', 'mt', 'ht', 'rs', 'cl', 'cp', 'ma', 'cb', 'cy', 'oh', 'ch'];
+                drumKeys.forEach(key => {
+                    gainNodes[key] = audioContext.createGain();
+                    gainNodes[key].connect(audioContext.destination);
+                });
+            }
+        }
+
+        // Function to attach event listeners to buttons
+        function setupDrumMachine() {
+            const buttons = document.querySelectorAll('.drum-machine button');
+            buttons.forEach(button => {
+                button.addEventListener('click', () => {
+                    // Initialize audio on first interaction
+                    if (!audioContext) {
+                        initializeAudio();
+                    }
+
+                    const soundKey = button.id;
+                    drumMachine.play(soundKey);
+                });
+            });
+        }
+
+        // Function to generate sequencer steps
+        function generateSequencer() {
+            const sequencer = document.querySelector('.sequencer');
+            const drumKeys = ['bd', 'sd', 'lt', 'mt', 'ht', 'rs', 'cl', 'cp', 'ma', 'cb', 'cy', 'oh', 'ch'];
+
+            drumKeys.forEach(key => {
+                sequencerState[key] = Array(steps).fill(false);
+
+                const drumRow = document.createElement('div');
+                drumRow.className = 'drum-row';
+                drumRow.innerHTML = `<label>${key.toUpperCase()}</label>`;
+
+                for (let i = 0; i < steps; i++) {
+                    const step = document.createElement('div');
+                    step.className = 'sequencer-step';
+                    step.dataset.key = key;
+                    step.dataset.step = i;
+                    step.addEventListener('click', toggleStep);
+                    drumRow.appendChild(step);
+                }
+
+                sequencer.appendChild(drumRow);
+            });
+        }
+
+        // Function to toggle a sequencer step
+        function toggleStep(event) {
+            const step = event.target;
+            const key = step.dataset.key;
+            const stepIndex = parseInt(step.dataset.step);
+
+            sequencerState[key][stepIndex] = !sequencerState[key][stepIndex];
+            step.classList.toggle('active', sequencerState[key][stepIndex]);
+        }
+
+        // Function to generate gain controls
+        function generateGainControls() {
+            const gainControls = document.querySelector('.gain-controls');
+            const drumKeys = ['bd', 'sd', 'lt', 'mt', 'ht', 'rs', 'cl', 'cp', 'ma', 'cb', 'cy', 'oh', 'ch'];
+
+            drumKeys.forEach(key => {
+                const control = document.createElement('div');
+                control.className = 'gain-control';
+                control.innerHTML = `
+                    <label>${key.toUpperCase()}</label>
+                    <input type="range" min="0" max="1" step="0.1" value="1" id="gain-${key}">
+                `;
+                gainControls.appendChild(control);
+
+                const slider = document.getElementById(`gain-${key}`);
+                slider.addEventListener('input', () => {
+                    gainNodes[key].gain.value = parseFloat(slider.value);
+                });
+            });
+        }
+
+        // Function to start the sequencer
+        function startSequencer() {
+            if (isPlaying) return;
+
+            isPlaying = true;
+            const bpm = parseInt(document.getElementById('bpm').value);
+            const stepDuration = (60 / bpm) / 4; // 16th note steps
+
+            intervalId = setInterval(() => {
+                playStep(currentStep);
+                currentStep = (currentStep + 1) % steps;
+            }, stepDuration * 1000);
+        }
+
+        // Function to stop the sequencer
+        function stopSequencer() {
+            if (!isPlaying) return;
+
+            isPlaying = false;
+            clearInterval(intervalId);
+            currentStep = 0;
+        }
+
+        // Function to play a step
+        function playStep(step) {
+            const drumKeys = ['bd', 'sd', 'lt', 'mt', 'ht', 'rs', 'cl', 'cp', 'ma', 'cb', 'cy', 'oh', 'ch'];
+
+            drumKeys.forEach(key => {
+                if (sequencerState[key][step]) {
+                    drumMachine.play(key);
+                }
+            });
+        }
+
+        // Call the setup functions when the DOM is fully loaded
+        document.addEventListener('DOMContentLoaded', () => {
+            setupDrumMachine();
+            generateSequencer();
+            generateGainControls();
+
+            document.getElementById('start').addEventListener('click', startSequencer);
+            document.getElementById('stop').addEventListener('click', stopSequencer);
+        });
+    </script>
+</body>
+</html>
