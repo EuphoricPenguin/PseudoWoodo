@@ -8,6 +8,7 @@
             background: #333;
             display: inline-block;
             color: white;
+            width: 100%;
         }
 
         button {
@@ -26,10 +27,22 @@
 
         .sequencer {
             margin-top: 20px;
+            position: relative;
+        }
+
+        .drum-row {
+            display: flex;
+            align-items: center;
+            margin-bottom: 5px;
+        }
+
+        .drum-row label {
+            width: 80px;
+            text-align: right;
+            margin-right: 10px;
         }
 
         .sequencer-step {
-            display: inline-block;
             width: 30px;
             height: 30px;
             margin: 2px;
@@ -39,6 +52,16 @@
 
         .sequencer-step.active {
             background: #ffcc00;
+        }
+
+        .playhead {
+            position: absolute;
+            top: 0;
+            height: 100%;
+            width: 2px;
+            background: red;
+            z-index: 10;
+            transition: left 0.1s linear;
         }
 
         .controls {
@@ -57,20 +80,6 @@
 </head>
 <body>
     <div class="drum-machine">
-        <button id="bd">Bass Drum</button>
-        <button id="sd">Snare</button>
-        <button id="lt">Low Tom</button>
-        <button id="mt">Mid Tom</button>
-        <button id="ht">High Tom</button>
-        <button id="rs">Rim Shot</button>
-        <button id="cl">Claves</button>
-        <button id="cp">Clap</button>
-        <button id="ma">Maracas</button>
-        <button id="cb">Cowbell</button>
-        <button id="cy">Cymbal</button>
-        <button id="oh">Open HiHat</button>
-        <button id="ch">Closed HiHat</button>
-
         <div class="controls">
             <label for="bpm">BPM:</label>
             <input type="number" id="bpm" value="120" min="60" max="240">
