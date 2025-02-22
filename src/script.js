@@ -9,33 +9,21 @@ class PseudoWoodoInterpreter {
         this.code = [];
         this.running = false;
         this.onLog = onLog;
-
-        // Input handling
         this.inputPromise = null;
         this.inputResolver = null;
     }
 
     async execute(code) {
         this.running = true;
-        this.code = code.split('\n')
-            .map(line => {
-                // Remove inline comments before processing
-                const remIndex = line.toLowerCase().indexOf('rem');
-                return remIndex > -1 ? line.slice(0, remIndex) : line;
-            })
-            .filter(l => l.trim());
+        this.code = code.split('\n').map(line => line.replace(/rem.*/i, '')).filter(l => l.trim());
         this.currentLine = 0;
 
-        // First pass to find labels
         while (this.currentLine < this.code.length) {
             const line = this.code[this.currentLine].trim();
-            if (line.startsWith(':')) {
-                this.labels[line.slice(1)] = this.currentLine;
-            }
+            if (line.startsWith(':')) this.labels[line.slice(1)] = this.currentLine;
             this.currentLine++;
         }
 
-        // Second pass to execute
         this.currentLine = 0;
         while (this.running && this.currentLine < this.code.length) {
             await this.processLine(this.code[this.currentLine]);
@@ -46,21 +34,14 @@ class PseudoWoodoInterpreter {
     stop() {
         this.running = false;
         if (this.inputResolver) {
-            this.inputResolver(""); // Resolve with empty string if stopped
+            this.inputResolver("");
             this.inputPromise = null;
             this.inputResolver = null;
         }
     }
 
     async processLine(rawLine) {
-        let line = rawLine.trim();
-
-        // Remove any remaining inline comments (case-insensitive)
-        const remIndex = line.toLowerCase().indexOf('rem');
-        if (remIndex > -1) {
-            line = line.slice(0, remIndex).trim();
-        }
-
+        let line = rawLine.replace(/rem.*/i, '').trim();
         if (!line || line.startsWith(':')) return;
 
         const parts = line.split(/\s+/);
@@ -70,9 +51,7 @@ class PseudoWoodoInterpreter {
             const firstToken = parts[0].toLowerCase();
 
             if (firstToken === 'set') {
-                if (parts.length < 4 || parts[2].toLowerCase() !== 'as') {
-                    throw new Error("Invalid 'set' syntax: set <var> as <value>");
-                }
+                if (parts.length < 4 || parts[2].toLowerCase() !== 'as') throw new Error("Invalid 'set' syntax: set <var> as <value>");
                 const varName = parts[1];
                 const value = parts.slice(3).join(' ');
                 this.validateVariableName(varName, true);
@@ -85,7 +64,6 @@ class PseudoWoodoInterpreter {
                 return;
             }
 
-            // Handle variable reassignment (e.g., "foo as 'foo'")
             const asIndex = parts.findIndex(p => p.toLowerCase() === 'as');
             if (asIndex !== -1) {
                 const varName = parts.slice(0, asIndex).join(' ');
@@ -114,45 +92,33 @@ class PseudoWoodoInterpreter {
 
     validateVariableName(varName, isSetCommand) {
         const lowerVar = varName.toLowerCase();
-        if (this.COMMAND_KEYWORDS.has(lowerVar)) {
-            throw new Error(`Cannot use command keyword '${varName}' as variable`);
-        }
-        if (isSetCommand && this.SESSION_VARS.has(lowerVar)) {
-            throw new Error(`Cannot use 'set' with session variable '${varName}' - use 'as' instead`);
-        }
+        if (this.COMMAND_KEYWORDS.has(lowerVar)) throw new Error(`Cannot use command keyword '${varName}' as variable`);
+        if (isSetCommand && this.SESSION_VARS.has(lowerVar)) throw new Error(`Cannot use 'set' with session variable '${varName}' - use 'as' instead`);
     }
 
     async handleCall(target) {
         const lowerTarget = target.toLowerCase();
         switch (lowerTarget) {
             case 'console-log':
-                const message = this.vars['console-log'] ?? '';
-                this.output.push(String(message));
-                if (this.onLog) this.onLog(message);
+                this.output.push(String(this.vars['console-log'] ?? ''));
+                if (this.onLog) this.onLog(this.vars['console-log'] ?? '');
                 break;
             case 'console-clear':
                 this.output = [];
                 if (this.onLog) this.onLog(null);
                 break;
             case 'timeout':
-                await new Promise(res =>
-                    setTimeout(res, (this.vars.timeout || 0) * 1000)
-                );
+                await new Promise(res => setTimeout(res, (this.vars.timeout || 0) * 1000));
                 break;
             default:
                 const targetLine = this.labels[target];
-                if (targetLine !== undefined) {
-                    this.currentLine = targetLine - 1; // Adjust to the line before the label
-                }
+                if (targetLine !== undefined) this.currentLine = targetLine - 1;
         }
     }
 
     async handleConditional(line) {
-        // Extract the condition and the action
         const conditionEnd = line.toLowerCase().indexOf(' call ');
-        if (conditionEnd === -1) {
-            throw new Error("Invalid 'if' syntax: expected 'call' after condition");
-        }
+        if (conditionEnd === -1) throw new Error("Invalid 'if' syntax: expected 'call' after condition");
 
         const condition = line.slice(3, conditionEnd).trim();
         const trueTarget = line.slice(conditionEnd + 6).trim();
@@ -166,41 +132,26 @@ class PseudoWoodoInterpreter {
             falseTarget = trueTarget.slice(elseIndex + 11).trim();
         }
 
-        if (this.evaluateCondition(condition)) {
-            await this.handleCall(finalTarget);
-        } else if (falseTarget) {
-            await this.handleCall(falseTarget);
-        }
+        if (this.evaluateCondition(condition)) await this.handleCall(finalTarget);
+        else if (falseTarget) await this.handleCall(falseTarget);
     }
 
     async evaluateExpression(expr) {
         expr = this.normalizeExpression(expr);
 
-        // Handle input keyword
         if (expr.trim().toLowerCase() === 'input') {
-            this.inputPromise = new Promise(resolve => {
-                this.inputResolver = resolve;
-            });
+            this.inputPromise = new Promise(resolve => this.inputResolver = resolve);
             return await this.inputPromise;
         }
 
-        // Replace variables with their values, skipping those inside quotes
         expr = expr.replace(/(?:'[^']*'|"[^"]*"|(\b[a-zA-Z0-9-]+\b))/g, (match, g1) => {
-            if (g1) { // Variable name outside quotes
-                if (this.vars.hasOwnProperty(g1)) {
-                    const value = this.vars[g1];
-                    if (typeof value === 'string') {
-                        return JSON.stringify(value); // Properly escape quotes
-                    }
-                    if (Array.isArray(value)) {
-                        return JSON.stringify(value);
-                    }
-                    return value;
-                }
-                return g1;
-            } else { // Preserve quoted strings
-                return match;
+            if (g1 && this.vars.hasOwnProperty(g1)) {
+                const value = this.vars[g1];
+                if (typeof value === 'string') return JSON.stringify(value);
+                if (Array.isArray(value)) return JSON.stringify(value);
+                return value;
             }
+            return g1 ? g1 : match;
         });
 
         try {
@@ -214,17 +165,13 @@ class PseudoWoodoInterpreter {
     evaluateCondition(condition) {
         condition = this.normalizeExpression(condition)
             .replace(/(?:'[^']*'|"[^"]*"|(\b[a-zA-Z0-9-]+\b))/g, (match, g1) => {
-                if (g1) { // Variable name outside quotes
-                    if (this.vars.hasOwnProperty(g1)) {
-                        const value = this.vars[g1];
-                        if (typeof value === 'boolean') return value.toString();
-                        if (Array.isArray(value)) return JSON.stringify(value);
-                        return typeof value === 'string' ? `"${value}"` : value;
-                    }
-                    return g1;
-                } else { // Preserve quoted strings
-                    return match;
+                if (g1 && this.vars.hasOwnProperty(g1)) {
+                    const value = this.vars[g1];
+                    if (typeof value === 'boolean') return value.toString();
+                    if (Array.isArray(value)) return JSON.stringify(value);
+                    return typeof value === 'string' ? `"${value}"` : value;
                 }
+                return g1 ? g1 : match;
             });
 
         try {
@@ -252,14 +199,12 @@ class PseudoWoodoInterpreter {
             .replace(/\band\b/gi, '&&')
             .replace(/\bnot\b/gi, '!');
 
-        // Handle nested array access (e.g., "at-index 0 of 1 of 2d-array")
         let previous;
         do {
             previous = expr;
             expr = expr.replace(/at-index\s+(\d+)\s+of\s+(\d+)\s+of\s+([a-zA-Z0-9-]+)/g, '($3)[$2][$1]');
         } while (expr !== previous);
 
-        // Handle single-level array access (e.g., "at-index i of my-array")
         expr = expr.replace(/at-index\s+([a-zA-Z0-9-]+)\s+of\s+([a-zA-Z0-9-]+)/g, '($2)[$1]');
 
         return expr;
@@ -269,42 +214,27 @@ class PseudoWoodoInterpreter {
         const asIndex = parts.findIndex(p => p.toLowerCase() === 'as');
         if (asIndex === -1) throw new Error("Missing 'as' in 'set-index'");
 
-        // Extract the index part and value expression
         const indexPart = parts.slice(1, asIndex);
         const valueExpr = parts.slice(asIndex + 1).join(' ');
         const value = await this.evaluateExpression(valueExpr);
 
-        // Parse the index and array name
-        if (indexPart.length !== 3 || indexPart[1].toLowerCase() !== 'of') {
-            throw new Error("Invalid 'set-index' syntax: expected 'set-index <index> of <array> as <value>'");
-        }
+        if (indexPart.length !== 3 || indexPart[1].toLowerCase() !== 'of') throw new Error("Invalid 'set-index' syntax: expected 'set-index <index> of <array> as <value>'");
 
-        const index = await this.evaluateExpression(indexPart[0]); // Evaluate the index (could be a variable or literal)
+        const index = await this.evaluateExpression(indexPart[0]);
         const arrayName = indexPart[2];
 
-        // Validate the array
-        if (!this.vars[arrayName] || !Array.isArray(this.vars[arrayName])) {
-            throw new Error(`'${arrayName}' is not an array`);
-        }
+        if (!this.vars[arrayName] || !Array.isArray(this.vars[arrayName])) throw new Error(`'${arrayName}' is not an array`);
+        if (typeof index !== 'number' || index < 0 || index >= this.vars[arrayName].length) throw new Error(`Index ${index} out of bounds`);
 
-        // Validate the index
-        if (typeof index !== 'number' || index < 0 || index >= this.vars[arrayName].length) {
-            throw new Error(`Index ${index} out of bounds`);
-        }
-
-        // Update the array
         this.vars[arrayName][index] = value;
     }
 
     provideInput(value) {
         if (this.inputResolver) {
             let parsedValue = value;
-            // Check if the input is a numeric string
             if (typeof parsedValue === 'string') {
                 const trimmed = parsedValue.trim();
-                if (trimmed.match(/^[-+]?(\d+\.?\d*|\.\d+)$/)) {
-                    parsedValue = parseFloat(trimmed);
-                }
+                if (trimmed.match(/^[-+]?(\d+\.?\d*|\.\d+)$/)) parsedValue = parseFloat(trimmed);
             }
             this.inputResolver(parsedValue);
             this.inputPromise = null;
