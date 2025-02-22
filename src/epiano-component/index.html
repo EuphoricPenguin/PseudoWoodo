@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FM Electric Piano with MIDI</title>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f0f0f0;
+            font-family: Arial, sans-serif;
+        }
+        .keyboard {
+            display: flex;
+            position: relative;
+        }
+        .key {
+            cursor: pointer;
+            user-select: none;
+        }
+        .white-key {
+            width: 50px;
+            height: 200px;
+            background-color: white;
+            border: 1px solid #ccc;
+            border-radius: 0 0 5px 5px;
+            box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.2);
+        }
+        .black-key {
+            width: 30px;
+            height: 120px;
+            background-color: black;
+            position: absolute;
+            top: 0;
+            margin-left: -15px;
+            border-radius: 0 0 5px 5px;
+            box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.5);
+            z-index: 1;
+        }
+        .black-key.C-sharp { left: 35px; }
+        .black-key.D-sharp { left: 85px; }
+        .black-key.F-sharp { left: 185px; }
+        .black-key.G-sharp { left: 235px; }
+        .black-key.A-sharp { left: 285px; }
+        .black-key.C-sharp5 { left: 385px; }
+        .black-key.D-sharp5 { left: 435px; }
+        .black-key.F-sharp5 { left: 535px; }
+        .black-key.G-sharp5 { left: 585px; }
+        .black-key.A-sharp5 { left: 635px; }
+        .midi-status {
+            position: absolute;
+            top: 20px;
+            font-size: 18px;
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+    <div class="midi-status">MIDI: Disconnected</div>
+    <div class="keyboard">
+        <!-- White keys -->
+        <div class="key white-key" data-note="C4"></div>
+        <div class="key white-key" data-note="D4"></div>
+        <div class="key white-key" data-note="E4"></div>
+        <div class="key white-key" data-note="F4"></div>
+        <div class="key white-key" data-note="G4"></div>
+        <div class="key white-key" data-note="A4"></div>
+        <div class="key white-key" data-note="B4"></div>
+        <div class="key white-key" data-note="C5"></div>
+        <div class="key white-key" data-note="D5"></div>
+        <div class="key white-key" data-note="E5"></div>
+        <div class="key white-key" data-note="F5"></div>
+        <div class="key white-key" data-note="G5"></div>
+        <div class="key white-key" data-note="A5"></div>
+        <div class="key white-key" data-note="B5"></div>
+        <div class="key white-key" data-note="C6"></div>
+
+        <!-- Black keys -->
+        <div class="key black-key C-sharp" data-note="C#4"></div>
+        <div class="key black-key D-sharp" data-note="D#4"></div>
+        <div class="key black-key F-sharp" data-note="F#4"></div>
+        <div class="key black-key G-sharp" data-note="G#4"></div>
+        <div class="key black-key A-sharp" data-note="A#4"></div>
+        <div class="key black-key C-sharp5" data-note="C#5"></div>
+        <div class="key black-key D-sharp5" data-note="D#5"></div>
+        <div class="key black-key F-sharp5" data-note="F#5"></div>
+        <div class="key black-key G-sharp5" data-note="G#5"></div>
+        <div class="key black-key A-sharp5" data-note="A#5"></div>
+    </div>
+
+    <script>
+        const context = new (window.AudioContext || window.webkitAudioContext)();
+        const noteFrequencies = {
+            'C4': 261.63, 'C#4': 277.18, 'D4': 293.66, 'D#4': 311.13,
+            'E4': 329.63, 'F4': 349.23, 'F#4': 369.99, 'G4': 392.00,
+            'G#4': 415.30, 'A4': 440.00, 'A#4': 466.16, 'B4': 493.88,
+            'C5': 523.25, 'C#5': 554.37, 'D5': 587.33, 'D#5': 622.25,
+            'E5': 659.25, 'F5': 698.46, 'F#5': 739.99, 'G5': 783.99,
+            'G#5': 830.61, 'A5': 880.00, 'A#5': 932.33, 'B5': 987.77,
+            'C6': 1046.50
+        };
+
+        let currentNotes = {};
+
+        // Web MIDI setup
+        const midiStatus = document.querySelector('.midi-status');
+
+        if (navigator.requestMIDIAccess) {
+            console.log("Web MIDI is supported in this browser.");
+            navigator.requestMIDIAccess({ sysex: false }) // Request MIDI access without sysex
+                .then(onMIDISuccess, onMIDIFailure);
+        } else {
+            console.error("Web MIDI is not supported in this browser.");
+            midiStatus.textContent = "MIDI: Not supported";
+        }
+
+        function onMIDISuccess(midiAccess) {
+            console.log("MIDI access granted.");
+            midiStatus.textContent = "MIDI: Connected";
+
+            // Listen for MIDI devices being connected or disconnected
+            midiAccess.onstatechange = (event) => {
+                console.log("MIDI device state changed:", event.port.name, event.port.state);
+                if (event.port.state === "connected") {
+                    midiStatus.textContent = "MIDI: Connected";
+                } else if (event.port.state === "disconnected") {
+                    midiStatus.textContent = "MIDI: Disconnected";
+                }
+            };
+
+            // Attach MIDI message handlers to all inputs
+            midiAccess.inputs.forEach(input => {
+                console.log("Attaching MIDI input:", input.name);
+                input.onmidimessage = onMIDIMessage;
+            });
+        }
+
+        function onMIDIFailure(error) {
+            console.error("Failed to access MIDI devices:", error);
+            midiStatus.textContent = "MIDI: Failed to connect";
+        }
+
+        function onMIDIMessage(message) {
+            const [command, note, velocity] = message.data;
+            console.log("MIDI message received:", command, note, velocity);
+
+            if (command === 144 && velocity > 0) { // Note on
+                playMIDINote(note, velocity);
+            } else if (command === 128 || (command === 144 && velocity === 0)) { // Note off
+                stopMIDINote(note);
+            }
+        }
+
+        function playMIDINote(midiNote, velocity) {
+            const frequency = midiNoteToFrequency(midiNote);
+            if (!frequency || currentNotes[midiNote]) return;
+
+            const now = context.currentTime;
+
+            // Carrier oscillator
+            const carrier = context.createOscillator();
+            carrier.type = 'sine';
+            carrier.frequency.setValueAtTime(frequency, now);
+
+            // Modulator oscillator
+            const modulator = context.createOscillator();
+            modulator.type = 'sine';
+            const ratio = 1.5; // Lower ratio for a mellower sound
+            modulator.frequency.setValueAtTime(frequency * ratio, now);
+
+            // Modulation depth
+            const modGain = context.createGain();
+            modulator.connect(modGain);
+            modGain.connect(carrier.frequency);
+
+            // Modulation envelope
+            const modEnvAttack = 0.02; // Slightly slower attack
+            const modEnvDecay = 0.4; // Longer decay
+            const modEnvSustain = 0.05; // Lower sustain level
+            const initialModIndex = 2; // Reduced modulation index for mellowness
+
+            modGain.gain.setValueAtTime(0, now);
+            modGain.gain.linearRampToValueAtTime(
+                initialModIndex * frequency * ratio,
+                now + modEnvAttack
+            );
+            modGain.gain.linearRampToValueAtTime(
+                modEnvSustain * frequency * ratio,
+                now + modEnvAttack + modEnvDecay
+            );
+
+            // Amplitude envelope
+            const ampGain = context.createGain();
+            carrier.connect(ampGain);
+            ampGain.connect(context.destination);
+
+            const ampEnvAttack = 0.02; // Slightly slower attack
+            const ampEnvDecay = 2.0; // Longer decay for a softer sound
+            const ampEnvSustain = 0.2; // Lower sustain level
+            const ampEnvRelease = 0.2; // Release time
+
+            ampGain.gain.setValueAtTime(0, now);
+            ampGain.gain.linearRampToValueAtTime(velocity / 127, now + ampEnvAttack); // Velocity sensitivity
+            ampGain.gain.linearRampToValueAtTime(
+                ampEnvSustain * (velocity / 127),
+                now + ampEnvAttack + ampEnvDecay
+            );
+
+            // Start oscillators
+            carrier.start();
+            modulator.start();
+
+            currentNotes[midiNote] = {
+                carrier,
+                modulator,
+                ampGain,
+                modGain,
+                stop: () => {
+                    const stopTime = context.currentTime;
+
+                    // Smoothly ramp down the amplitude
+                    ampGain.gain.cancelScheduledValues(stopTime);
+                    ampGain.gain.setValueAtTime(ampGain.gain.value, stopTime);
+                    ampGain.gain.linearRampToValueAtTime(0, stopTime + ampEnvRelease);
+
+                    // Smoothly ramp down the modulation
+                    modGain.gain.cancelScheduledValues(stopTime);
+                    modGain.gain.setValueAtTime(modGain.gain.value, stopTime);
+                    modGain.gain.linearRampToValueAtTime(0, stopTime + ampEnvRelease);
+
+                    // Stop oscillators after the release phase
+                    carrier.stop(stopTime + ampEnvRelease);
+                    modulator.stop(stopTime + ampEnvRelease);
+
+                    // Clean up
+                    setTimeout(() => {
+                        delete currentNotes[midiNote];
+                    }, ampEnvRelease * 1000);
+                }
+            };
+        }
+
+        function stopMIDINote(midiNote) {
+            if (currentNotes[midiNote]) {
+                currentNotes[midiNote].stop();
+            }
+        }
+
+        function midiNoteToFrequency(midiNote) {
+            // Convert MIDI note number to frequency
+            return 440 * Math.pow(2, (midiNote - 69) / 12);
+        }
+
+        // Add event listeners to keys (for on-screen keyboard)
+        const keys = document.querySelectorAll('.key');
+        keys.forEach(key => {
+            key.addEventListener('mousedown', () => {
+                const note = key.dataset.note;
+                const midiNote = Object.keys(noteFrequencies).indexOf(note) + 60; // Map to MIDI note numbers
+                playMIDINote(midiNote, 127); // Full velocity for on-screen keys
+            });
+            key.addEventListener('mouseup', () => {
+                const note = key.dataset.note;
+                const midiNote = Object.keys(noteFrequencies).indexOf(note) + 60;
+                stopMIDINote(midiNote);
+            });
+            key.addEventListener('mouseleave', () => {
+                const note = key.dataset.note;
+                const midiNote = Object.keys(noteFrequencies).indexOf(note) + 60;
+                stopMIDINote(midiNote);
+            });
+        });
+    </script>
+</body>
+</html>
