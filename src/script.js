@@ -85,7 +85,11 @@ class PseudoWoodoInterpreter {
             }
 
         } catch (e) {
-            this.output.push(`Error: ${e.message}`);
+            if (this.onLog) {
+    this.onLog({ message: `Error: ${e.message}`, isError: true });
+}
+this.output.push(`Error: ${e.message}`);
+this.running = false;
             this.running = false;
         }
     }

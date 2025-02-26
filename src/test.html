@@ -447,6 +447,74 @@
 
         QUnit.module("Session Calls");
 
+QUnit.test("input halts execution until input is provided", async assert => {
+    const done = assert.async();
+    const code = `
+        set name as input
+        console-log as 'Hello, ' plus name plus '!'
+        call console-log
+    `;
+
+    const logs = [];
+    const interpreter = new PseudoWoodoInterpreter(msg => {
+        if (msg !== null) logs.push(msg);
+    });
+
+    let executionComplete = false;
+
+    // Start execution
+    interpreter.execute(code).then(() => {
+        executionComplete = true;
+    });
+
+    // Wait for a short time to ensure execution is halted
+    await new Promise(resolve => setTimeout(resolve, 100));
+
+    // Verify execution is halted
+    assert.notOk(executionComplete, "Execution should be halted at input");
+
+    // Provide input
+    interpreter.provideInput("Test User");
+
+    // Wait for execution to complete
+    await new Promise(resolve => setTimeout(resolve, 100));
+
+    // Verify execution completed and logged the correct message
+    assert.ok(executionComplete, "Execution should complete after input is provided");
+    assert.deepEqual(
+        logs,
+        ['Hello, Test User!'],
+        "Should log the correct message after input is provided"
+    );
+    done();
+});
+
+QUnit.test("numeric input is treated as number", async assert => {
+    const done = assert.async();
+    const code = `
+        set num as input
+        console-log as num
+        call console-log
+    `;
+
+    const logs = [];
+    const interpreter = new PseudoWoodoInterpreter(msg => {
+        if (msg !== null) logs.push(msg);
+    });
+
+    // Simulate numeric input
+    setTimeout(() => interpreter.provideInput("42"), 100);
+
+    await interpreter.execute(code);
+
+    assert.strictEqual(
+        logs[0],
+        42,
+        "Numeric input should be treated as a number"
+    );
+    done();
+});
+
 
 
         QUnit.test("console-log and timeout", async assert => {
