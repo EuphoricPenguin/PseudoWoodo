@@ -108,7 +108,7 @@ class PseudoWoodoInterpreter {
                 if (this.onLog) this.onLog(null);
                 break;
             case 'timeout':
-                await new Promise(res => setTimeout(res, (this.vars.timeout || 0) * 1000));
+                await new Promise(resolve => setTimeout(resolve, (this.vars.timeout || 0) * 1000));
                 break;
             default:
                 const targetLine = this.labels[target];
