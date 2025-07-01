@@ -1,0 +1,49 @@
+
+/* Editor Container */
+.editor-container {
+    display: flex;
+    flex-direction: column;
+}
+
+/* Proper Browser Tabs */
+.editor-tabs {
+    display: flex;
+    margin: 0;
+    padding: 0 10px;
+    background: var(--code-bg);
+    border-bottom: 2px solid #3a3a3a;
+    order: -1;
+}
+.editor-tab {
+    padding: 10px 20px;
+    margin-right: 5px;
+    background: #2d2d2d;
+    border: 2px solid #3a3a3a;
+    border-bottom: none;
+    border-radius: 6px 6px 0 0;
+    cursor: pointer;
+    color: var(--fg);
+    font-family: 'Fira Code', monospace;
+    font-size: 14px;
+    transition: all 0.2s ease;
+}
+.editor-tab.active {
+    background: var(--bg);
+    color: var(--accent);
+    border-bottom: 2px solid var(--bg);
+    margin-bottom: -2px;
+}
+.editor-tab:hover:not(.active) {
+    background: #252525;
+}
+
+/* Mobile Responsiveness */
+@media (max-width: 768px) {
+    .editor-tabs, #blocks-editor {
+        display: none !important;
+    }
+    #text-editor {
+        display: block !important;
+        height: 60vh;
+    }
+}
