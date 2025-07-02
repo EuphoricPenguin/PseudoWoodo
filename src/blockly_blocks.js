@@ -292,3 +292,17 @@ Blockly.Blocks['pseudowoodo_boolean'] = {
     this.setTooltip('Boolean value');
   }
 };
+
+// JavaScript generators for custom blocks
+Blockly.JavaScript['pseudowoodo_console_log'] = function(block) {
+  const value = Blockly.JavaScript.valueToCode(block, 'VALUE', 
+    Blockly.JavaScript.ORDER_ATOMIC) || "''";
+  return `console.log(${value});\n`;
+};
+
+Blockly.JavaScript['pseudowoodo_if'] = function(block) {
+  const condition = Blockly.JavaScript.valueToCode(block, 'CONDITION',
+    Blockly.JavaScript.ORDER_NONE) || 'false';
+  const statements = Blockly.JavaScript.statementToCode(block, 'DO');
+  return `if (${condition}) {\n${statements}}\n`;
+};
