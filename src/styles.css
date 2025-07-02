@@ -48,6 +48,24 @@ body {
     height: 100%;
 }
 
+#blocklyDiv {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: var(--code-bg);
+}
+
+.blocklyToolboxDiv {
+    background-color: var(--bg);
+}
+
+.blocklyTreeLabel {
+    color: var(--fg);
+    font-family: 'Fira Code', monospace;
+}
+
 #code,
 .editor-highlight {
     width: 100%;
