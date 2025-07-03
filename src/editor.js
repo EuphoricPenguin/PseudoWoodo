@@ -20,9 +20,15 @@ function switchToBlockly() {
     
     document.getElementById('blockly-editor').classList.remove('hidden');
     document.getElementById('text-editor').classList.add('hidden');
+    updateTextEditorFromBlocks();
     
     if (!blocklyWorkspace) {
         blocklyWorkspace = Blockly.inject('blocklyDiv', {
+            variables: {
+                getVariableMap: function() {
+                    return this.variableMap_;
+                }
+            },
             toolbox: {
                 "kind": "categoryToolbox",
                 "contents": [
@@ -124,6 +130,16 @@ function switchToBlockly() {
         startBlock.initSvg();
         startBlock.render();
         startBlock.setDeletable(false);
+        
+        // Add change listener for real-time updates
+        blocklyWorkspace.addChangeListener(function(event) {
+            if (!event.isUiEvent) {
+                updateTextEditorFromBlocks();
+            }
+        });
+        
+        // Initialize text editor with current blocks
+        updateTextEditorFromBlocks();
     }
 }
 
@@ -164,7 +180,16 @@ function runCode() {
     output.innerHTML = '';
     
     if (document.getElementById('text-editor').classList.contains('hidden')) {
-        code = Blockly.JavaScript.workspaceToCode(blocklyWorkspace);
+        // Initialize generator
+        if (!Blockly.PseudoWoodo.init) {
+            Blockly.PseudoWoodo.init = function(workspace) {
+                this.workspace = workspace;
+            };
+        }
+        Blockly.PseudoWoodo.init(blocklyWorkspace);
+        
+        // Generate PseudoWoodo code from blocks
+        code = Blockly.PseudoWoodo.workspaceToCode(blocklyWorkspace);
     } else {
         code = document.getElementById('code').value;
     }
@@ -216,6 +241,26 @@ function sendInput() {
         interpreter.provideInput(inputValue);
         inputField.value = '';
     }
+}
+
+/**
+ * Updates the text editor content with the current Blockly workspace code
+ */
+function updateTextEditorFromBlocks() {
+    if (!blocklyWorkspace) return;
+    
+    // Initialize generator if needed
+    if (!Blockly.PseudoWoodo.init) {
+        Blockly.PseudoWoodo.init = function(workspace) {
+            this.workspace = workspace;
+        };
+    }
+    Blockly.PseudoWoodo.init(blocklyWorkspace);
+    
+    // Generate code and update text editor
+    const code = Blockly.PseudoWoodo.workspaceToCode(blocklyWorkspace);
+    document.getElementById('code').value = code;
+    applyHighlighting();
 }
 
 // Initialize on load
