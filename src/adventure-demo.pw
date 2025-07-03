@@ -1,0 +1,32 @@
+rem This is a bad attempt at showing how a text adventure might work.
+
+set counter as 0
+
+set message-arr as ['You are in a wooded area. What do you do?', 'The tree has been felled. What do you do?', 'You run as fast as you can. What do you do?', 'You died.']
+
+set message as message-arr[counter]
+
+set option-arr as ['Cut down a tree.', 'Run from the angry lumberjacks.', 'Die because you can't run fast enough.', '']
+
+set option-one as '1. ' plus option-arr[counter]
+
+set option-two as '2. Do nothing.'
+
+:loop
+call console-clear
+console-log as message
+call console-log
+console-log as option-one
+call console-log
+console-log as option-two
+call console-log
+set in as input
+if in is-equal-to 1 call one else call two
+
+:one
+counter as counter plus 1
+message as message-arr[counter]
+call loop
+
+:two
+call loop
