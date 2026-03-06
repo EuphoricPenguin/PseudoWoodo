@@ -5,6 +5,8 @@ An experimental interpreted language implemented in JavaScript primarily by Deep
 
 [Try out the Web Interpreter](https://euphoricpenguin.github.io/PseudoWoodo/)
 
+[Language Spec](https://github.com/EuphoricPenguin/PseudoWoodo/blob/main/PseudoWoodo%20Language%20Specification.md)
+
 If you have NodeJS installed, you can also use the headless mode:
 `node headless.js --file hello-world.pw`
 
