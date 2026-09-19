@@ -77,7 +77,7 @@ set str as 'hello' plus 'world!'
 PseudoWoodo is weakly-typed, as the interpreter relies on JavaScript's [built-in arithmetic operations.](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#dynamic_and_weak_typing)
 
 ```
-set num-str as 'this is the number one:' plus 1
+set num-str as 'this is the number one: ' plus 1
 ```
 
 ## Control Flow
