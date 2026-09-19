@@ -1,7 +1,7 @@
 # PseudoWoodo Language Specification
 ### Version 0.2
 
-*An inflexible, feature-poor, and proof-of-concept language with the end-goal being the creation of an entire programming language with the help of a large language model.*
+*An inflexible, feature-poor, and proof-of-concept language with the end goal being the creation of an entire programming language with the help of a large language model.*
 
 *PseudoWoodo is an interpreted language written in JavaScript and inherits its dynamic typing and browser compatibility.*
 
@@ -17,7 +17,7 @@ PseudoWoodo uses several reserved names/keywords, as outlined in the following s
 ## Primitive Data Types
 
 PseudoWoodo is dynamically typed, as the interpreter directly passes stored variables to an object in JavaScript.
-While it can technically store any value, strings must use single quotes (like this: "string").
+While it can technically store any value, strings must use single quotes (like this: 'string').
 There are no restrictions on number formatting, so long as it's a [valid](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Lexical_grammar#numeric_literals) number in JavaScript. Boolean values also follow [JavaScript convention.](https://developer.mozilla.org/en-US/docs/Glossary/Boolean)
 
 ## Line Comments
