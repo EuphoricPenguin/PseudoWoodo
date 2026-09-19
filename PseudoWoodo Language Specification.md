@@ -160,7 +160,7 @@ set y as 2
 if x is-less-than y call do-this
 
 :do-this
-console-log as x plus' is definitely less than' plus y
+console-log as x plus ' is definitely less than ' plus y
 call console-log
 ```
 The reserved name `else` can also be used to add additional functionality to the existing conditional statement.
@@ -172,7 +172,7 @@ set y as 2
 if x is-less-than y call do-this else call do-this-instead
 
 :do-this
-console-log as x plus 'is definitely less than 'plus y plus '.'
+console-log as x plus ' is definitely less than ' plus y plus '.'
 call console-log
 call end
 
@@ -202,7 +202,7 @@ if x is-less-than-or-equal-to 4 call loop
 
 ## Arrays
 
-PseudoWoodo supports native JavaScript syntax for arrays, as it passes them directly as-is to the variable object. Arrays can be single-dimensional or multi-dimensional (e.g., 2D arrays).
+PseudoWoodo supports native JavaScript syntax for arrays, as it passes them directly as-is to the variable object. Arrays can be single-dimensional or multi-dimensional (like 2D arrays).
 
 Arrays are declared using the `set` and `as` keywords, with values enclosed in square brackets.
 
@@ -223,7 +223,8 @@ To access an element at a specific index, use the `at-index` and `of` keywords.
 ```
 set my-array as [10, 20, 30, 40]  
 at-index 2 of my-array
-```  
+```
+This will result in a value of 30, as PseudoWoodo uses zero-based indexing.
 
 It should be noted that this keyword also works with strings.
 
@@ -232,23 +233,21 @@ set str as 'foo'
 at-index 0 of str
 ```
 
-This will result in a value of 30, as PseudoWoodo uses zero-based indexing.
-
-To modify an element at a specific index, use the `set-index` and `of` keywords with the `as` keyword to specify the new value.
+To modify an element at a specific index, use the `set-index` and `of` keywords, with `as` to specify the new value.
 
 ```
 set my-array as [10, 20, 30, 40]  
 set-index 2 of my-array as 99
 ```  
 
-For 2D arrays, use the `at-index keyword` with stacked `of` keywords to access elements.
+For 2D arrays, use the `at-index` keyword with stacked `of` keywords to access elements.
 
 ```
 set 2d-array as [[1, 2], [3, 4]]  
 at-index 0 of 1 of 2d-array
 ```  
 
-Since PseudoWoodo doesn't have explicit loops, you can use the existing if and call system to iterate over arrays.
+Since PseudoWoodo doesn't have explicit loops, you can use the existing if-and-call system to iterate over arrays.
 
 ```
 set my-array as [10, 20, 30, 40]  
